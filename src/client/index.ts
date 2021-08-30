@@ -2,7 +2,6 @@
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import type { SinonStub } from 'sinon'
 import sinon from 'sinon'
-import queryString from 'query-string'
 
 import remoteReporter from './remoteReporter'
 
@@ -49,18 +48,16 @@ window.addEventListener('load', async () => {
 
   await addMatchers().catch(pushError)
 
-  const specsQuery = queryString.parse(location.search).specs
-  const specImports = (Array.isArray(specsQuery) ? specsQuery : [specsQuery])
-    .filter((s): s is string => !!s)
-  const specs = specImports.map(id => [
-    id,
-    () => import(/* @vite-ignore */ id).catch(pushError)
+  const specImports: Array<{ filename: string, url: string }> = JSON.parse((window.frameElement as HTMLIFrameElement)?.dataset.specs || '[]')
+  const specs = specImports.map(({ filename, url }) => [
+    filename,
+    () => import(/* @vite-ignore */ url).catch(pushError)
   ] as const)
 
   // load tests
   await Promise.all(
-    specs.map(([path, importer]) => {
-      console.log('[jasmine client]', 'loading:', path)
+    specs.map(([filename, importer]) => {
+      console.log('[jasmine client]', 'loading:', filename)
       return importer()
     }),
   )

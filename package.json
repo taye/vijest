@@ -6,13 +6,15 @@
     "build": "vite build && NODE_ENV=production rollup -c rollup.config.js",
     "dev": "rollup -c rollup.config.js --watch | vite build --watch"
   },
-  "dependencies": {},
+  "dependencies": {
+    "glob": "^7.1.7",
+    "jasmine-console-reporter": "^3.1.0"
+  },
   "devDependencies": {
+    "@types/glob": "^7.1.4",
     "@types/node": "^16.7.6",
-    "jasmine-console-reporter": "^3.1.0",
     "jasmine-core": "^3.9.0",
     "jasmine-sinon": "^0.4.0",
-    "query-string": "^7.0.1",
     "rollup": "^2.56.3",
     "rollup-plugin-esbuild": "^4.5.0",
     "sinon": "^11.1.2",
@@ -20,7 +22,6 @@
     "vite": "^2.5.1"
   },
   "bundledDependencies": [
-    "jasmine-console-reporter",
     "jasmine-core",
     "jasmine-sinon",
     "sinon"

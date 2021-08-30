@@ -4,14 +4,19 @@ import { readFileSync } from 'fs'
 import JasmineConsoleReporter from 'jasmine-console-reporter'
 import { Plugin } from 'vite'
 
-import { getDepUrls, streamPromise } from './utils'
+import { getDepUrls, getSpecs, streamPromise } from './utils'
 
 const devModeKey = Symbol('vite-jasmine-dev-mode')
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
 
-export default function viteJasmine ({ [devModeKey]: isDev = false } = {}): Plugin {
-  let depUrlsPromise: Promise<Record<string, string>>
+export interface ViteJasmineOptions {
+  specs?: string
+}
+
+export default function viteJasmine (options: ViteJasmineOptions = {}): Plugin {
+  const { specs: pattern = '**/*.spec.{t,j}s{,x}'  } = options
+  const isDev: boolean = (options as any)[devModeKey]
 
   const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
 
@@ -21,6 +26,8 @@ export default function viteJasmine ({ [devModeKey]: isDev = false } = {}): Plug
 
     return chunkFile ? resolve(__dirname, 'dist', chunkFile) : join('.', id)
   }
+
+  let depUrlsPromise: Promise<Record<string, string>>
 
   return {
     name: 'vite-jasmine',
@@ -39,6 +46,7 @@ export default function viteJasmine ({ [devModeKey]: isDev = false } = {}): Plug
 
       const tags = isHost
         ? [
+          {tag: 'script', children: await getSpecs({ server, cwd: server.config.root, pattern }) },
           {tag: 'script', attrs: { type: 'module', src: depUrls.host } },
         ]
         : [
@@ -58,7 +66,7 @@ export default function viteJasmine ({ [devModeKey]: isDev = false } = {}): Plug
       ]))
 
       server.middlewares.use(async (req, res, next) => {
-        const urlMatch = req.url.match(/^\/@jasmine[/]?([^?]*)/)
+        const urlMatch = req.url?.match(/^\/@jasmine[/]?([^?]*)/)
 
         if (!urlMatch) return next()
 

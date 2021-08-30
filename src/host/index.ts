@@ -24,4 +24,5 @@ window.clearInterval = window.clearInterval
 
 // load client iframe
 const clientFrame = document.getElementById('client-frame') as HTMLIFrameElement
+clientFrame.dataset.specs = JSON.stringify((window as any).__specs)
 clientFrame.src = '/@jasmine/client'
