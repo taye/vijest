@@ -1,33 +1,9 @@
-import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
+// @ts-expect-error
+const { globals, env } = window.parent.__clientProps || {}
 
-import remoteReporter from './remoteReporter'
+const _sab = window.SharedArrayBuffer || ArrayBuffer
 
-const jasmine = jasmineRequire.core(jasmineRequire)
-
-const { config, globals } = (window.parent as any).__clientProps || {}
-
-const env = jasmine.getEnv(config)
-
-env.configure(config)
-
-const jasmineInterface = jasmineRequire.interface(jasmine, env)
-const { describe, it } = jasmineInterface
-
-jasmineInterface.test = it
-describe.skip = jasmineInterface.xdescribe
-describe.only = jasmineInterface.fdescribe
-it.skip = jasmineInterface.xit
-it.only = jasmineInterface.fit
-
-;[jasmineInterface.jsApiReporter, remoteReporter].forEach(env.addReporter)
-
-Object.assign(window, jasmineInterface, {
-  jasmine,
-  jasmineRequire,
-  test: it,
-  SharedArrayBuffer: window.SharedArrayBuffer || ArrayBuffer,
-  ...globals,
-})
+Object.assign(window, { SharedArrayBuffer: _sab }, globals)
 
 window.addEventListener('load', async () => {
   const errors: Error[] = []
@@ -49,7 +25,9 @@ window.addEventListener('load', async () => {
 
   env.execute()
 
-  jasmineInterface.test('[import specs]', () => {
-    errors.forEach(jasmineInterface.fail)
-  })
+  if (errors.length) {
+    globals.test('[import specs]', () => {
+      errors.forEach(globals.fail)
+    })
+  }
 })
