@@ -1,5 +1,12 @@
 import  './style.css'
 
+import expect from 'expect'
+import jestMock from 'jest-mock'
+
+const jest = {
+  ...jestMock,
+}
+
 const config: any = {
   failFast: false,
   oneFailurePerSpec: false,
@@ -10,6 +17,10 @@ const config: any = {
 // @ts-expect-error
 window.__clientProps = {
   config,
+  globals: {
+    expect,
+    jest,
+  }
 }
 
 /**
