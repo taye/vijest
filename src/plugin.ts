@@ -1,0 +1,90 @@
+import { resolve, join } from 'path'
+import fs from 'fs/promises'
+import { readFileSync } from 'fs'
+import JasmineConsoleReporter from 'jasmine-console-reporter'
+import { Plugin } from 'vite'
+
+import { getDepUrls, streamPromise } from './utils'
+
+const devModeKey = Symbol('vite-jasmine-dev-mode')
+
+const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
+
+export default function viteJasmine ({ [devModeKey]: isDev = false } = {}): Plugin {
+  let depUrlsPromise: Promise<Record<string, string>>
+
+  const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
+
+  const customResolve = (id: string) => {
+    id = join('src', id)
+    const chunkFile = manifest[id]?.file
+
+    return chunkFile ? resolve(__dirname, 'dist', chunkFile) : join('.', id)
+  }
+
+  return {
+    name: 'vite-jasmine',
+
+    async transformIndexHtml (html, { path, server }) {
+      if (!server) return
+
+      const isHost = path === '/@jasmine'
+      const isClient = path === '/@jasmine/client'
+
+      if (!isHost && !isClient) {
+        return
+      }
+
+      const depUrls = await (depUrlsPromise = (depUrlsPromise || getDepUrls({ server, customResolve })))
+
+      const tags = isHost
+        ? [
+          {tag: 'script', attrs: { type: 'module', src: depUrls.host } },
+        ]
+        : [
+          {tag: 'script', children: 'window.global = window' },
+          {tag: 'script', attrs: { type: 'module', src: depUrls.client } },
+        ]
+
+      return { html, tags }
+    },
+
+    configureServer (server) {
+      const jasmineReporter = new JasmineConsoleReporter()
+
+      const templates = Object.fromEntries((['host', 'client'] as const).map(subpath => [
+        subpath,
+        fs.readFile(resolve(__dirname, 'src', subpath, 'index.html')).then(b => b.toString()),
+      ]))
+
+      server.middlewares.use(async (req, res, next) => {
+        const urlMatch = req.url.match(/^\/@jasmine[/]?([^?]*)/)
+
+        if (!urlMatch) return next()
+
+        const [url, subpath] = urlMatch
+        const template = await templates[subpath || 'host']
+
+        if (template) {
+          const html = await server.transformIndexHtml(url, template)
+          return res.end(html)
+        }
+
+        if (subpath === 'report') {
+          const body = await streamPromise(req)
+
+          const { method, arg } = JSON.parse(body.toString())
+
+          jasmineReporter[method](arg)
+
+          return res.end()
+        }
+
+        next()
+      })
+    },
+  }
+}
+
+/** @internal */
+viteJasmine._dev = devModeKey
