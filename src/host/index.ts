@@ -29,7 +29,6 @@ describe.skip = jasmineInterface.xdescribe
 describe.only = jasmineInterface.fdescribe
 it.skip = jasmineInterface.xit
 it.only = jasmineInterface.fit
-
 ;[jasmineInterface.jsApiReporter, remoteReporter].forEach(env.addReporter)
 
 // @ts-expect-error
@@ -41,12 +40,12 @@ window.__clientProps = {
     test: it,
     expect,
     jest,
-  }
+  },
 }
 
 /**
-   * Setting up timing functions to be able to be overridden. Certain browsers (Safari, IE 8, phantomjs) require this hack.
-   */
+ * Setting up timing functions to be able to be overridden. Certain browsers (Safari, IE 8, phantomjs) require this hack.
+ */
 /* eslint-disable no-self-assign */
 window.setTimeout = window.setTimeout
 window.setInterval = window.setInterval

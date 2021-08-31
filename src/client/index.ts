@@ -9,11 +9,12 @@ window.addEventListener('load', async () => {
   const errors: Error[] = []
   const pushError = (e: Error) => errors.push(e)
 
-  const specImports: Array<{ filename: string, url: string }> = JSON.parse((window.frameElement as HTMLIFrameElement)?.dataset.specs || '[]')
-  const specs = specImports.map(({ filename, url }) => [
-    filename,
-    () => import(/* @vite-ignore */ url).catch(pushError)
-  ] as const)
+  const specImports: Array<{ filename: string; url: string }> = JSON.parse(
+    (window.frameElement as HTMLIFrameElement)?.dataset.specs || '[]',
+  )
+  const specs = specImports.map(
+    ({ filename, url }) => [filename, () => import(/* @vite-ignore */ url).catch(pushError)] as const,
+  )
 
   // load tests
   await Promise.all(

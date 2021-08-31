@@ -22,7 +22,7 @@ export default defineConfig({
       output: {
         format: 'es',
         sourcemap: !isProd,
-      }
+      },
     },
     minify: isProd,
     terserOptions: {

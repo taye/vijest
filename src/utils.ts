@@ -2,11 +2,14 @@ import { Readable } from 'stream'
 import _glob from 'glob'
 import { promisify } from 'util'
 import { ViteDevServer } from 'vite'
-import {join} from 'path'
+import { join } from 'path'
 
 const glob = promisify<(p: string, o: any) => Promise<string[]>>(_glob as any)
 
-export async function getDepUrls ({ server, customResolve }: {
+export async function getDepUrls({
+  server,
+  customResolve,
+}: {
   server: import('vite').ViteDevServer
   customResolve: (s: string) => string
 }) {
@@ -16,14 +19,15 @@ export async function getDepUrls ({ server, customResolve }: {
   }
 
   const entryPromises = Object.entries(htmlDeps).map(async ([name, filename]) => [
-    name, await resolveToUrl({ server, filename })
+    name,
+    await resolveToUrl({ server, filename }),
   ])
   const depIdEntries = await Promise.all(entryPromises)
 
   return Object.fromEntries(depIdEntries)
 }
 
-export function streamPromise (stream: Readable) {
+export function streamPromise(stream: Readable) {
   return new Promise<Buffer>((resolve) => {
     const chunks: Buffer[] = []
 
@@ -32,18 +36,28 @@ export function streamPromise (stream: Readable) {
   })
 }
 
-export async function getSpecs ({ cwd, pattern, server }: { cwd: string, pattern: string, server: ViteDevServer }) {
+export async function getSpecs({
+  cwd,
+  pattern,
+  server,
+}: {
+  cwd: string
+  pattern: string
+  server: ViteDevServer
+}) {
   const specFiles = await glob(pattern, { cwd, ignore: '**/node_modules/**' })
 
-  const specs = await Promise.all(specFiles.map(async filename => ({
-    filename,
-    url: await resolveToUrl({ server, filename: join(cwd, filename) }),
-  })))
+  const specs = await Promise.all(
+    specFiles.map(async (filename) => ({
+      filename,
+      url: await resolveToUrl({ server, filename: join(cwd, filename) }),
+    })),
+  )
 
   return `window.global = window; window.__specs = ${JSON.stringify(specs)}`
 }
 
-async function resolveToUrl({ server, filename }: { server: ViteDevServer, filename: string }) {
+async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
   // resolve dependency id
   const id = (await server.pluginContainer.resolveId(filename, __filename))?.id
 
