@@ -4,8 +4,8 @@ const esbuild = require('rollup-plugin-esbuild')
 
 const isProd = process.env.NODE_ENV === 'production'
 
-export default defineConfig( {
-    input: resolve(__dirname, 'src', 'plugin.ts'),
+export default defineConfig({
+    input: resolve(__dirname, 'index.ts'),
     output: {
       file: 'index.js',
       format: 'commonjs',

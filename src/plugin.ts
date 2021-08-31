@@ -4,15 +4,12 @@ import { readFileSync } from 'fs'
 import JasmineConsoleReporter from 'jasmine-console-reporter'
 import { Plugin } from 'vite'
 
+import type { ViteJasmineOptions } from '../index.d'
 import { getDepUrls, getSpecs, streamPromise } from './utils'
 
 const devModeKey = Symbol('vite-jasmine-dev-mode')
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
-
-export interface ViteJasmineOptions {
-  specs?: string
-}
 
 export default function viteJasmine (options: ViteJasmineOptions = {}): Plugin {
   const { specs: pattern = '**/*.spec.{t,j}s{,x}'  } = options
