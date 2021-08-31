@@ -9,11 +9,17 @@ import { getDepUrls, getSpecs, streamPromise } from './utils'
 
 const devModeKey = Symbol('vite-jasmine-dev-mode')
 
+const NAME = 'vite-jasmine'
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
 
 export default function viteJasmine (options: ViteJasmineOptions = {}): Plugin {
-  const { specs: pattern = '**/*.spec.{t,j}s{,x}'  } = options
   const isDev: boolean = (options as any)[devModeKey]
+
+  if (!isDev && process.env.NODE_ENV === 'production') {
+    return { name: NAME + ' [disabled with NODE_ENV === "production"' }
+  }
+
+  const { specs: pattern = '**/*.spec.{t,j}s{,x}'  } = options
 
   const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
 
@@ -27,10 +33,10 @@ export default function viteJasmine (options: ViteJasmineOptions = {}): Plugin {
   let depUrlsPromise: Promise<Record<string, string>>
 
   return {
-    name: 'vite-jasmine',
+    name: NAME,
 
     async transformIndexHtml (html, { path, server }) {
-      if (!server) return
+      if (!server || (server.config.mode === 'production') && !isDev) return
 
       const isHost = path === '/@jasmine'
       const isClient = path === '/@jasmine/client'
@@ -62,6 +68,7 @@ export default function viteJasmine (options: ViteJasmineOptions = {}): Plugin {
         fs.readFile(resolve(__dirname, 'src', subpath, 'index.html')).then(b => b.toString()),
       ]))
 
+      // TODO: accept only connections from host machine's IP?
       server.middlewares.use(async (req, res, next) => {
         const urlMatch = req.url?.match(/^\/@jasmine[/]?([^?]*)/)
 
