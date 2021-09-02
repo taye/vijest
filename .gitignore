@@ -1,4 +1,5 @@
-/index.js*
+/*.js
+/*.js.map
 
 .DS_Store
 *.local

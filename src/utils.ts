@@ -1,8 +1,10 @@
 import { Readable } from 'stream'
 import _glob from 'glob'
 import { promisify } from 'util'
-import { ViteDevServer } from 'vite'
 import { join } from 'path'
+import { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
+import { INTERNAL, PLUGIN_NAME } from './constants'
+import { ViteJasminePlugin } from './plugin'
 
 const glob = promisify<(p: string, o: any) => Promise<string[]>>(_glob as any)
 
@@ -68,4 +70,10 @@ async function resolveToUrl({ server, filename }: { server: ViteDevServer; filen
 
   // get dep url from vite server moduleGraph
   return server.moduleGraph.getModuleById(id)!.url
+}
+
+export function findPlugin(config: UserConfig | ResolvedConfig) {
+  const plugins = (config?.plugins || []).flat() as unknown as ViteJasminePlugin[]
+
+  return plugins.find((p) => p && p[INTERNAL])
 }

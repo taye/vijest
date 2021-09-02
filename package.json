@@ -3,25 +3,33 @@
   "version": "0.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -b && NODE_ENV=production rollup -c rollup.config.js",
-    "dev": "rollup -c rollup.config.js --watch | vite build --watch"
+    "build": "tsc -b && NODE_ENV=production yarn build:rollup",
+    "dev": "yarn build:rollup --watch | vite build --watch",
+    "build:rollup": "rollup -c rollup.config.ts --configPlugin rollup-plugin-esbuild "
   },
   "dependencies": {
     "glob": "^7.1.7",
-    "jasmine-console-reporter": "^3.1.0"
+    "jasmine-console-reporter": "^3.1.0",
+    "puppeteer": "^10.2.0",
+    "puppeteer-to-istanbul": "^1.4.0"
   },
   "devDependencies": {
-    "@types/glob": "^7.1.4",
     "@types/node": "^16.7.6",
     "expect": "^27.1.0",
     "jasmine-core": "^3.9.0",
     "jest-mock": "^27.1.0",
+    "prettier": "^2.3.2",
     "rollup": "^2.56.3",
     "rollup-plugin-esbuild": "^4.5.0",
     "typescript": "^4.3.2",
     "vite": "^2.5.1"
   },
   "bundledDependencies": [
-    "jasmine-core"
-  ]
+    "expect",
+    "jasmine-core",
+    "jest-mock"
+  ],
+  "peerDependencies": {
+    "vite": "^2.5.1"
+  }
 }
