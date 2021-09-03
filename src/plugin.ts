@@ -1,46 +1,63 @@
 import { resolve, join } from 'path'
 import fs from 'fs/promises'
 import { readFileSync } from 'fs'
+import connect from 'connect'
 import JasmineConsoleReporter from 'jasmine-console-reporter'
-import { Plugin } from 'vite'
+import { Plugin, ViteDevServer } from 'vite'
+import queryString from 'query-string'
 
 import type { ViteJasmineOptions } from '../index.d'
 import { getDepUrls, getSpecs, streamPromise } from './utils'
-import { DEFAULT_SPEC_PATTERN, HOST_BASE_PATH, INTERNAL, PLUGIN_NAME, URL_RE } from './constants'
+import { INTERNAL, PLUGIN_NAME, URL_RE } from './constants'
+import { Server } from 'http'
+import { AddressInfo } from 'net'
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
-
-interface ViteJasminePluginInternal {
-  options: ViteJasmineOptions
-  disabled: boolean
-  hooks: Set<Record<string | symbol, (arg: any) => Promise<void> | void>>
-}
 
 interface InternalOptions extends ViteJasmineOptions {
   [INTERNAL]?: boolean
 }
 
-export interface ViteJasminePlugin extends Omit<Plugin, 'config'> {
-  [INTERNAL]: ViteJasminePluginInternal
-  config: (arg: typeof INTERNAL) => ViteJasminePluginInternal
+export interface ViteJasminePlugin extends Plugin {
+  [INTERNAL]: Internals
+}
+
+interface Internals {
+  options: ViteJasmineOptions
+  config: ViteDevServer['config']
+  app: connect.Server
+  httpServer: Server
+  getServerUrl: () => string
+  hooks: Set<Record<string | symbol, (arg: any) => Promise<void> | void>>
 }
 
 export default function viteJasmine(options: InternalOptions = {}): ViteJasminePlugin {
   const isDev = options[INTERNAL]
+  const app = connect()
+
+  const getServerUrl = () => {
+    const { baseUrl } = internals.options
+
+    if (baseUrl) return baseUrl
+
+    const addressInfo = internals.httpServer?.address() as AddressInfo | null
+
+    if (!addressInfo) return ''
+
+    const protocol = internals.config.server.https ? 'https' : 'http'
+    const address = /:/.test(addressInfo.address) ? `[${addressInfo.address}]` : addressInfo.address
+
+    return `${protocol}://${address}:${addressInfo.port}`
+  }
 
   const internals: ViteJasminePlugin[typeof INTERNAL] = {
-    disabled: false,
     options,
+    app,
+    getServerUrl,
+    httpServer: null as any,
+    config: null as any,
     hooks: new Set(),
   }
-
-  if (!isDev && process.env.NODE_ENV === 'production') {
-    return {
-      name: PLUGIN_NAME + ' [disabled when NODE_ENV === "production"]',
-    } as any
-  }
-
-  const { baseUrl: origin, specs: pattern = DEFAULT_SPEC_PATTERN } = options
 
   const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
 
@@ -53,36 +70,45 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
 
   let depUrlsPromise: Promise<Record<string, string>>
 
-  internals.options = { specs: pattern, baseUrl: origin }
-
   return {
     name: PLUGIN_NAME,
 
     [INTERNAL]: internals,
 
-    config: (arg) => {
-      // allow getting internal state
-      return arg === INTERNAL ? internals : (undefined as any)
+    config() {
+      return { server: { middlewareMode: 'html', fs: { allow: [__dirname] } } }
+    },
+
+    configResolved(config) {
+      internals.config = config
     },
 
     async transformIndexHtml(html, { path, server }) {
-      if (!server || (server.config.mode === 'production' && !isDev)) return
+      if (!server) return
 
-      const isHost = path === HOST_BASE_PATH
-      const isClient = path === `${HOST_BASE_PATH}/client`
+      const [_, subpath, search] = path.match(URL_RE) || []
+
+      const isHost = subpath === ''
+      const isClient = subpath === 'client'
 
       if (!isHost && !isClient) {
         return
       }
 
+      const query = queryString.parse(search)
+
       const depUrls = await (depUrlsPromise = depUrlsPromise || getDepUrls({ server, customResolve }))
 
       const tags = isHost
         ? [
-            { tag: 'script', children: await getSpecs({ server, cwd: server.config.root, pattern }) },
+            { tag: 'script', children: 'alert("TODO: interactive test runs etc.")' },
             { tag: 'script', attrs: { type: 'module', src: depUrls.host } },
           ]
         : [
+            {
+              tag: 'script',
+              children: await getSpecs({ server, cwd: internals.config.root, filenames: query.spec || [] }),
+            },
             { tag: 'script', children: 'window.global = window' },
             { tag: 'script', attrs: { type: 'module', src: depUrls.client } },
           ]
@@ -90,7 +116,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
       return { html, tags }
     },
 
-    configureServer(server) {
+    async configureServer(server) {
       const jasmineReporter = new JasmineConsoleReporter()
 
       const templates = Object.fromEntries(
@@ -101,8 +127,8 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
       )
 
       // TODO: accept only connections from host machine's IP?
-      server.middlewares.use(async (req, res, next) => {
-        const urlMatch = req.url?.match(URL_RE)
+      app.use(async (req, res, next) => {
+        const urlMatch = req.url!.match(URL_RE)
 
         if (!urlMatch) return next()
 
@@ -117,9 +143,9 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
         if (subpath === 'report') {
           const body = await streamPromise(req)
 
-          const { method, arg } = JSON.parse(body.toString())
+          const { method, arg } = JSON.parse(body.toString() || '{}')
 
-          jasmineReporter[method](arg)
+          jasmineReporter[method]?.(arg)
           res.end()
 
           await Promise.all([...internals.hooks].map((hook) => hook?.[method]?.(arg)))
@@ -129,6 +155,9 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
 
         next()
       })
+
+      app.use(server.middlewares)
+      internals.httpServer = app.listen(0)
     },
   }
 }

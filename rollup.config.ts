@@ -1,13 +1,16 @@
 import { defineConfig } from 'rollup'
 import esbuild from 'rollup-plugin-esbuild'
+import nodeResolve from '@rollup/plugin-node-resolve'
 
 const isProd = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
   input: {
-    index: 'src/plugin.ts',
-    runner: 'src/runner.ts',
+    plugin: 'src/plugin.ts',
+    'jest-preset': 'src/jest/preset.ts',
+    runner: 'src/jest/runner.ts',
   },
+  external: [/\/node_modules\//, 'fs/promises'],
   output: {
     format: 'commonjs',
     sourcemap: !isProd,
@@ -15,5 +18,5 @@ export default defineConfig({
     dir: __dirname,
     chunkFileNames: '[name].js',
   },
-  plugins: [esbuild()],
+  plugins: [esbuild(), nodeResolve()],
 })

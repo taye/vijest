@@ -16,7 +16,6 @@ export default defineConfig({
     manifest: true,
     rollupOptions: {
       input: {
-        host: resolve(__dirname, 'src/host/index.ts'),
         client: resolve(__dirname, 'src/client/index.ts'),
       },
       external: ['sinon'],

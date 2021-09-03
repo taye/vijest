@@ -1,12 +1,9 @@
 import { Readable } from 'stream'
-import _glob from 'glob'
 import { promisify } from 'util'
-import { join } from 'path'
+import { resolve } from 'path'
 import { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
 import { INTERNAL, PLUGIN_NAME } from './constants'
 import { ViteJasminePlugin } from './plugin'
-
-const glob = promisify<(p: string, o: any) => Promise<string[]>>(_glob as any)
 
 export async function getDepUrls({
   server,
@@ -16,7 +13,7 @@ export async function getDepUrls({
   customResolve: (s: string) => string
 }) {
   const htmlDeps = {
-    host: customResolve('host/index.ts'),
+    // host: customResolve('host/index.ts'),
     client: customResolve('client/index.ts'),
   }
 
@@ -40,28 +37,29 @@ export function streamPromise(stream: Readable) {
 
 export async function getSpecs({
   cwd,
-  pattern,
+  filenames,
   server,
 }: {
   cwd: string
-  pattern: string
+  filenames: string | string[]
   server: ViteDevServer
 }) {
-  const specFiles = await glob(pattern, { cwd, ignore: '**/node_modules/**' })
+  filenames = Array.isArray(filenames) ? filenames : [filenames]
 
   const specs = await Promise.all(
-    specFiles.map(async (filename) => ({
+    filenames.map(async (filename) => ({
       filename,
-      url: await resolveToUrl({ server, filename: join(cwd, filename) }),
+      url: await resolveToUrl({ server, filename: resolve(cwd, filename) }),
     })),
   )
 
   return `window.global = window; window.__specs = ${JSON.stringify(specs)}`
 }
 
-async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
+export async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
   // resolve dependency id
-  const id = (await server.pluginContainer.resolveId(filename, __filename))?.id
+  const absolutePath = resolve(server.config.root, filename)
+  const id = (await server.pluginContainer.resolveId(absolutePath, __filename))?.id
 
   if (!id) throw Error(`[vite-jasmine] couldn't resolve "${filename}"`)
 
