@@ -5,8 +5,8 @@ import type Runtime from 'jest-runtime'
 
 import { INTERNAL } from '../constants'
 import { Reporter } from './reporter'
-import { getLaunch } from '../utils'
 import Environment from './environment'
+import {connectToLauncher} from '../launcher'
 
 async function runner(
   globalConfig: Config.GlobalConfig,
@@ -23,7 +23,7 @@ async function runner(
   }
 
   const reporter = new Reporter(globalConfig, config, testPath)
-  const { startSpec } = await getLaunch()
+  const { startSpec } = await connectToLauncher()
   const { page } = await startSpec({ filename: testPath, reporter })
   const results = await reporter.getResults()
 

@@ -8,6 +8,8 @@ export default defineConfig({
   input: {
     plugin: 'src/plugin.ts',
     'jest-preset': 'src/jest/preset.ts',
+    setup: 'src/jest/setup.ts',
+    teardown: 'src/jest/teardown.ts',
     runner: 'src/jest/runner.ts',
     environment: 'src/jest/environment.ts',
   },

@@ -1,10 +1,11 @@
 import type { Readable } from 'stream'
 import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
 import { relative, join, sep } from 'path'
-import { LAUNCH_SYMBOL, INTERNAL, PLUGIN_NAME } from './constants'
-import { ViteJasminePlugin } from './plugin'
-import type { launch } from './launcher'
 import assert from 'assert'
+
+import { INTERNAL, PLUGIN_NAME } from './constants'
+import { ViteJasminePlugin } from './plugin'
+import { AddressInfo } from 'net'
 
 export async function getDepUrls({
   server,
@@ -37,11 +38,9 @@ export function streamPromise(stream: Readable) {
 }
 
 export async function getSpecs({
-  cwd,
   filenames,
   server,
 }: {
-  cwd: string
   filenames: string | string[]
   server: ViteDevServer
 }) {
@@ -66,7 +65,7 @@ export async function resolveToUrl({ server, filename }: { server: ViteDevServer
 
   const id = (await server.pluginContainer.resolveId(relativePath))?.id
 
-  assert(id, `[vite-jasmine] couldn't resolve "${filename}"`)
+  assert(id, message(`couldn't resolve "${filename}"`))
 
   // resolve, load and dransform
   await server.transformRequest(id)
@@ -81,12 +80,14 @@ export function findPlugin(config: UserConfig | ResolvedConfig) {
   return plugins.find((p) => p && p[INTERNAL])
 }
 
-export function getLaunch(createNew?: () => ReturnType<typeof launch>) {
-  const launchPromise = ((global as any)[LAUNCH_SYMBOL] as ReturnType<typeof launch>) || createNew?.()
+export function message(s: string) {
+  return `[${PLUGIN_NAME}] ${s}`
+}
 
-  ;(global as any)[LAUNCH_SYMBOL] = launchPromise
+export function addressToUrl(addressInfo: AddressInfo | null, protocol: string) {
+  if (!addressInfo) return ''
 
-  assert(launchPromise)
+  const address = /:/.test(addressInfo.address) ? `[${addressInfo.address}]` : addressInfo.address
 
-  return launchPromise
+  return `${protocol}://${address}:${addressInfo.port}`
 }

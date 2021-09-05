@@ -3,9 +3,10 @@ import fs from 'fs/promises'
 import { readFileSync } from 'fs'
 import connect from 'connect'
 import queryString from 'query-string'
+import { WebSocketServer } from 'ws'
 
 import type { ViteJasmineOptions } from '../index.d'
-import { getDepUrls, getSpecs, streamPromise } from './utils'
+import { addressToUrl, getDepUrls, getSpecs, streamPromise } from './utils'
 import { HOST_BASE_PATH, INTERNAL, INTERNAL_SYMBOL_NAME, PLUGIN_NAME, URL_RE } from './constants'
 import { Server } from 'http'
 import { AddressInfo } from 'net'
@@ -28,6 +29,7 @@ interface Internals {
   config: ViteDevServer['config']
   app: connect.Server
   httpServer: Server
+  wss: any
   getServerUrl: () => string
   hooks: Set<Partial<CustomReporter>>
 }
@@ -41,14 +43,10 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
 
     if (baseUrl) return baseUrl
 
-    const addressInfo = internals.httpServer?.address() as AddressInfo | null
-
-    if (!addressInfo) return ''
-
+    const address = internals.httpServer?.address() as AddressInfo | null
     const protocol = internals.config.server.https ? 'https' : 'http'
-    const address = /:/.test(addressInfo.address) ? `[${addressInfo.address}]` : addressInfo.address
 
-    return `${protocol}://${address}:${addressInfo.port}`
+    return addressToUrl(address, protocol)
   }
 
   const internals: ViteJasminePlugin[typeof INTERNAL] = {
@@ -56,6 +54,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     app,
     getServerUrl,
     httpServer: null as any,
+    wss: null as any,
     config: null as any,
     hooks: new Set(),
   }
@@ -108,7 +107,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
         : [
             {
               tag: 'script',
-              children: await getSpecs({ server, cwd: internals.config.root, filenames: query.spec || [] }),
+              children: await getSpecs({ server, filenames: query.spec || [] }),
             },
             {
               tag: 'script',
@@ -164,6 +163,12 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
             await (hook as any)?.[method]?.(arg)
           }
 
+          const message = JSON.stringify({ method, arg })
+
+          for (const client of internals.wss.clients) {
+            await client.send(message)
+          }
+
           return res.end('{}')
         } catch (error) {
           console.error(error)
@@ -174,7 +179,36 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
       })
 
       app.use(server.middlewares)
-      internals.httpServer = app.listen(0)
+
+      const httpServer = app.listen(0)
+      const wss = new WebSocketServer({ port: 0 })
+
+      wss.on('connection', (ws) => {
+        ws.on('message', (message: string) => {
+          const data = JSON.parse(message)
+          const { filename } = data
+
+          if (filename && !ws.filename) {
+            ws.filename = filename
+          }
+
+          wss.clients.forEach(client => {
+            if (client === ws || client.filename !== filename) return
+
+            // client.send(message)
+          })
+        })
+      })
+
+      httpServer.on('upgrade', (request, socket, head) => {
+        if (request.url !== HOST_BASE_PATH) return
+
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request)
+        })
+      })
+
+      Object.assign(internals, { httpServer, wss })
     },
   }
 }

@@ -1,9 +1,11 @@
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
-import remoteReporter from './remoteReporter'
-
 import jestMock from 'jest-mock'
 import expect from 'expect'
-import { postSync } from './utils'
+import chalk from 'chalk'
+
+console.log(chalk.red('asdf'))
+
+import remoteReporter from './remoteReporter'
 
 export const jasmine = jasmineRequire.core(jasmineRequire)
 
