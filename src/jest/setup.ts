@@ -1,4 +1,4 @@
-import {INTERNAL} from '../constants';
+import { INTERNAL } from '../constants'
 import { cacheConnection, launch } from '../launcher'
 
 const setup = async () => {

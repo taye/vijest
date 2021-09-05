@@ -1,10 +1,10 @@
-import {dirname} from 'path'
+import { dirname } from 'path'
 import assert from 'assert'
 import puppeteer from 'puppeteer'
 import { createServer } from 'vite'
 import pti from 'puppeteer-to-istanbul'
 import findCacheDir from 'find-cache-dir'
-import {readFile, writeFile} from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import WebSocket from 'ws'
 import mkdirp from 'mkdirp'
 
@@ -70,7 +70,6 @@ export async function startSpec({ filename, reporter, connection, browser }: Sta
     const { method, arg } = JSON.parse(message.toString())
 
     if (arg.filename !== filename) return
-
     ;(reporter as any)[method]?.(arg)
   })
 
@@ -122,7 +121,10 @@ const getCoverage = async (page: puppeteer.Page) => {
 const cacheDir = findCacheDir({ name: PLUGIN_NAME, thunk: true })
 
 const getConnectionCachePath = () => {
-  assert(cacheDir, message('the location to write the browser and server info couldn\'t be determined or is not writable.'))
+  assert(
+    cacheDir,
+    message("the location to write the browser and server info couldn't be determined or is not writable."),
+  )
 
   return cacheDir('state.json')
 }
@@ -143,12 +145,13 @@ export async function connectToLauncher() {
     connection = JSON.parse((await readFile(getConnectionCachePath())).toString())
   } catch {}
 
-  assert(connection, message('plugin hasn\'t been launched'))
+  assert(connection, message("plugin hasn't been launched"))
 
   const browser = await puppeteer.connect(connection.puppeteer)
 
   return {
     browser,
-    startSpec: (options: Omit<StartSpecArg, 'connection' | 'browser'>) => startSpec({ ...options, connection, browser })
+    startSpec: (options: Omit<StartSpecArg, 'connection' | 'browser'>) =>
+      startSpec({ ...options, connection, browser }),
   }
 }

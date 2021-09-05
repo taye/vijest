@@ -1,4 +1,4 @@
-import { env, globals, jasmineInterface } from './jasmine'
+import { env, globals } from './jasmine'
 
 Object.assign(window, globals)
 
@@ -22,8 +22,8 @@ window.addEventListener('load', async () => {
   env.execute()
 
   if (errors.length) {
-    jasmineInterface.test('[import specs]', () => {
-      errors.forEach(jasmineInterface.fail)
+    globals.test('[import specs]', () => {
+      errors.forEach(globals.fail)
     })
   }
 })

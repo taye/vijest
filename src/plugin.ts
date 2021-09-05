@@ -192,7 +192,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
             ws.filename = filename
           }
 
-          wss.clients.forEach(client => {
+          wss.clients.forEach((client) => {
             if (client === ws || client.filename !== filename) return
 
             // client.send(message)

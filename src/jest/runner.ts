@@ -6,7 +6,7 @@ import type Runtime from 'jest-runtime'
 import { INTERNAL } from '../constants'
 import { Reporter } from './reporter'
 import Environment from './environment'
-import {connectToLauncher} from '../launcher'
+import { connectToLauncher } from '../launcher'
 
 async function runner(
   globalConfig: Config.GlobalConfig,

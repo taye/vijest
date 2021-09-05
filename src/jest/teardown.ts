@@ -1,4 +1,4 @@
-import {INTERNAL} from "../constants"
+import { INTERNAL } from '../constants'
 
 const teardown = async () => {
   const { close } = (global as any)[INTERNAL]

@@ -19,16 +19,17 @@ env.configure({
 })
 
 export const jasmineInterface = jasmineRequire.interface(jasmine, env)
+
+env.addReporter(jasmineInterface.jsApiReporter)
+env.addReporter(remoteReporter)
+
 const { describe, it } = jasmineInterface
 
-jasmineInterface.test = jasmineInterface.it
 describe.skip = jasmineInterface.xdescribe
 describe.only = jasmineInterface.fdescribe
-it.skip = jasmineInterface.xit
-it.only = jasmineInterface.fit
-it.skip = jasmineInterface.xtest
-it.only = jasmineInterface.ftest
-;[jasmineInterface.jsApiReporter, remoteReporter].forEach(env.addReporter)
+
+it.skip = jasmineInterface.xtest = jasmineInterface.xit
+it.only = jasmineInterface.ftest = jasmineInterface.fit
 
 const _sab = window.SharedArrayBuffer || ArrayBuffer
 
@@ -37,6 +38,7 @@ export const globals = {
   jasmine,
   jasmineRequire,
   ...jasmineInterface,
+  test: it,
   jest: {
     ...jestMock,
   },
