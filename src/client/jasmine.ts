@@ -1,9 +1,6 @@
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import jestMock from 'jest-mock'
 import expect from 'expect'
-import chalk from 'chalk'
-
-console.log(chalk.red('asdf'))
 
 import remoteReporter from './remoteReporter'
 

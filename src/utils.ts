@@ -1,10 +1,10 @@
 import type { Readable } from 'stream'
 import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
-import { relative, join, sep } from 'path'
+import { relative, sep } from 'path'
 import assert from 'assert'
 
 import { INTERNAL, PLUGIN_NAME } from './constants'
-import { ViteJasminePlugin } from './plugin'
+import { VitestPlugin } from './plugin'
 import { AddressInfo } from 'net'
 
 export async function getDepUrls({
@@ -57,7 +57,7 @@ export async function getSpecs({
 }
 
 export async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
-  let relativePath = join('.', relative(server.config.root, filename))
+  let relativePath = relative(server.config.root, filename)
 
   if (relativePath[0] !== '.') {
     relativePath = '.' + sep + relativePath
@@ -75,7 +75,7 @@ export async function resolveToUrl({ server, filename }: { server: ViteDevServer
 }
 
 export function findPlugin(config: UserConfig | ResolvedConfig) {
-  const plugins = (config?.plugins || []).flat() as unknown as ViteJasminePlugin[]
+  const plugins = (config?.plugins || []).flat() as unknown as VitestPlugin[]
 
   return plugins.find((p) => p && p[INTERNAL])
 }

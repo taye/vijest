@@ -9,11 +9,12 @@ import WebSocket from 'ws'
 import mkdirp from 'mkdirp'
 
 import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
-import viteJasmine from './plugin'
+import vitest from './plugin'
 import type { Reporter } from './jest/reporter'
 import { addressToUrl, message } from './utils'
+import type { VitestOptions } from '../index.d'
 
-type LaunchOptions = Parameters<typeof puppeteer['launch']>[0]
+export interface LaunchOptions extends VitestOptions {}
 
 type PromiseResolution<T> = T extends PromiseLike<infer U> ? U : never
 
@@ -35,15 +36,15 @@ export interface StartSpecArg {
   browser: puppeteer.Browser
 }
 
-export async function launch(options: LaunchOptions = {}) {
-  const { baseUrl, server, internals } = await createViteServer()
+export async function launch({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
+  const { server, internals, baseUrl } = await createViteServer(serverOptions)
 
   const browser = await puppeteer.launch({
     // TODO
     executablePath: 'chromium',
     ignoreHTTPSErrors: true,
-    ...options,
-    args: ['--no-sandbox', ...(options.args || [])],
+    ...puppeteerOptions,
+    args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
   })
 
   const connection: LaunchConnection = {
@@ -96,15 +97,15 @@ export async function startSpec({ filename, reporter, connection, browser }: Sta
   return { page, close }
 }
 
-async function createViteServer() {
-  const plugin = viteJasmine()
+async function createViteServer(options: VitestOptions) {
+  const plugin = vitest(options)
   const internals = plugin[INTERNAL]
 
   const server = await createServer({
     plugins: [plugin],
   })
 
-  const baseUrl = internals.getServerUrl()
+  const baseUrl = internals.getBaseUrl()
 
   assert(
     baseUrl,

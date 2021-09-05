@@ -6,7 +6,7 @@ import queryString from 'query-string'
 // @ts-expect-error
 import WebSocket, { WebSocketServer } from 'ws'
 
-import type { ViteJasmineOptions } from '../index.d'
+import type { VitestOptions } from '../index.d'
 import { addressToUrl, getDepUrls, getSpecs, streamPromise } from './utils'
 import { HOST_BASE_PATH, INTERNAL, INTERNAL_SYMBOL_NAME, PLUGIN_NAME, URL_RE } from './constants'
 import { Server } from 'http'
@@ -17,36 +17,39 @@ import assert from 'assert'
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
 
-interface InternalOptions extends ViteJasmineOptions {
+interface InternalOptions extends VitestOptions {
   [INTERNAL]?: boolean
 }
 
-export interface ViteJasminePlugin extends Plugin {
+export interface VitestPlugin extends Plugin {
   [INTERNAL]: Internals
 }
 
 interface Internals {
-  options: ViteJasmineOptions
+  options: VitestOptions
   config?: ViteDevServer['config']
   app: connect.Server
   httpServer?: Server
   wss: any
   viteServer?: ViteDevServer
-  getServerUrl: () => string
+  getBaseUrl: () => string
   /** @deprecated */
   hooks: Set<Partial<CustomReporter>>
   close: () => Promise<void>
 }
 
-export default function viteJasmine(options: InternalOptions = {}): ViteJasminePlugin {
+export default function vitest(options: InternalOptions = {}): VitestPlugin {
   const isDev = options[INTERNAL]
   const app = connect()
   const wss = new WebSocketServer({ port: 0 })
 
-  const getServerUrl = () => {
-    const { baseUrl } = internals.options
+  const getBaseUrl = () => {
+    const base = internals.config?.base
 
-    if (baseUrl) return baseUrl
+    if (/^http[s]?:/.test(base || '')) {
+      const url = new URL(base!)
+      return url.href
+    }
 
     const address = internals.httpServer?.address() as AddressInfo | null
     const protocol = internals.config!.server.https ? 'https' : 'http'
@@ -54,11 +57,11 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     return addressToUrl(address, protocol)
   }
 
-  const internals: ViteJasminePlugin[typeof INTERNAL] = {
+  const internals: VitestPlugin[typeof INTERNAL] = {
     options,
     app,
     wss,
-    getServerUrl,
+    getBaseUrl,
     httpServer: undefined,
     config: undefined,
     viteServer: undefined,
@@ -86,7 +89,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     [INTERNAL]: internals,
 
     config() {
-      return { server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] } } }
+      return { server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] }, open: false } }
     },
 
     configResolved(config) {
@@ -191,7 +194,11 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
 
       app.use(viteServer.middlewares)
 
-      const httpServer = app.listen(0)
+      const { strictPort, host } = viteServer.config.server
+      const port = strictPort ? viteServer.config.server.port : 0
+      const hostname = typeof host === 'boolean' ? (host ? '0.0.0.0' : '127.0.0.1') : host
+
+      const httpServer = app.listen(port as number, hostname)
 
       httpServer.on('upgrade', (request, socket, head) => {
         if (request.url !== HOST_BASE_PATH) return
