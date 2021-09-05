@@ -1,44 +1,6 @@
-import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
-import remoteReporter from './remoteReporter'
+import { env, globals, jasmineInterface } from './jasmine'
 
-import jestMock from 'jest-mock'
-import expect from 'expect'
-
-import './style.css'
-
-const jasmine = jasmineRequire.core(jasmineRequire)
-
-const env = jasmine.getEnv()
-
-env.configure({
-  failFast: false,
-  oneFailurePerSpec: false,
-  hideDisabled: false,
-  random: false,
-})
-
-const jasmineInterface = jasmineRequire.interface(jasmine, env)
-const { describe, it } = jasmineInterface
-
-jasmineInterface.test = it
-describe.skip = jasmineInterface.xdescribe
-describe.only = jasmineInterface.fdescribe
-it.skip = jasmineInterface.xit
-it.only = jasmineInterface.fit
-;[jasmineInterface.jsApiReporter, remoteReporter].forEach(env.addReporter)
-
-const _sab = window.SharedArrayBuffer || ArrayBuffer
-
-Object.assign(window, {
-  SharedArrayBuffer: _sab,
-  jasmine,
-  jasmineRequire,
-  test: it,
-  jest: {
-    ...jestMock,
-  },
-  expect,
-})
+Object.assign(window, globals)
 
 window.addEventListener('load', async () => {
   const errors: Error[] = []

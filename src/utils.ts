@@ -1,9 +1,10 @@
-import { Readable } from 'stream'
-import { promisify } from 'util'
-import { resolve } from 'path'
-import { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
-import { INTERNAL, PLUGIN_NAME } from './constants'
+import type { Readable } from 'stream'
+import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
+import { relative, join, sep } from 'path'
+import { LAUNCH_SYMBOL, INTERNAL, PLUGIN_NAME } from './constants'
 import { ViteJasminePlugin } from './plugin'
+import type { launch } from './launcher'
+import assert from 'assert'
 
 export async function getDepUrls({
   server,
@@ -49,7 +50,7 @@ export async function getSpecs({
   const specs = await Promise.all(
     filenames.map(async (filename) => ({
       filename,
-      url: await resolveToUrl({ server, filename: resolve(cwd, filename) }),
+      url: await resolveToUrl({ server, filename: filename }),
     })),
   )
 
@@ -57,11 +58,15 @@ export async function getSpecs({
 }
 
 export async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
-  // resolve dependency id
-  const absolutePath = resolve(server.config.root, filename)
-  const id = (await server.pluginContainer.resolveId(absolutePath, __filename))?.id
+  let relativePath = join('.', relative(server.config.root, filename))
 
-  if (!id) throw Error(`[vite-jasmine] couldn't resolve "${filename}"`)
+  if (relativePath[0] !== '.') {
+    relativePath = '.' + sep + relativePath
+  }
+
+  const id = (await server.pluginContainer.resolveId(relativePath))?.id
+
+  assert(id, `[vite-jasmine] couldn't resolve "${filename}"`)
 
   // resolve, load and dransform
   await server.transformRequest(id)
@@ -74,4 +79,14 @@ export function findPlugin(config: UserConfig | ResolvedConfig) {
   const plugins = (config?.plugins || []).flat() as unknown as ViteJasminePlugin[]
 
   return plugins.find((p) => p && p[INTERNAL])
+}
+
+export function getLaunch(createNew?: () => ReturnType<typeof launch>) {
+  const launchPromise = ((global as any)[LAUNCH_SYMBOL] as ReturnType<typeof launch>) || createNew?.()
+
+  ;(global as any)[LAUNCH_SYMBOL] = launchPromise
+
+  assert(launchPromise)
+
+  return launchPromise
 }

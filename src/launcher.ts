@@ -5,8 +5,14 @@ import pti from 'puppeteer-to-istanbul'
 
 import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
 import viteJasmine from './plugin'
+import type { Reporter } from './jest/reporter'
 
 type LaunchOptions = Parameters<typeof puppeteer['launch']>[0]
+
+interface StartSpecArg {
+  filename: string
+  reporter: Reporter
+}
 
 export async function launch(options: LaunchOptions = {}) {
   const { baseUrl, server, internals } = await createViteServer()
@@ -21,32 +27,30 @@ export async function launch(options: LaunchOptions = {}) {
     args: ['--no-sandbox', ...(options.args || [])],
   })
 
-  const startSpec = async (filename: string) => {
-    const page = await browser.newPage()
+  const startSpec = async ({ filename, reporter }: StartSpecArg) => {
     const url = new URL(clientUrl)
 
     url.searchParams.set('spec', filename)
 
+    internals.hooks.add(reporter)
+
+    const { getResults } = reporter
+    reporter.getResults = () =>
+      getResults.apply(reporter).then(async (results) => {
+        internals.hooks.delete(reporter)
+        // TODO
+        // await getCoverage(page)
+        return results
+      })
+
+    const page = await browser.newPage()
     await page.goto(url.href)
     await page.coverage.startJSCoverage({ resetOnNavigation: false })
 
-    const results = new Promise<any>((resolve) => {
-      const doneHook = {
-        jasmineDone: async (arg: unknown) => {
-          message('DONEEEEEE')
-          internals.hooks.delete(doneHook)
-          await getCoverage(page)
-          resolve(arg)
-        },
-      }
-      internals.hooks.add(doneHook)
-    })
-
-    return { page, results }
+    return { page }
   }
 
   const close = () => {
-    console.error('CLOSING')
     return Promise.all([browser, server].map((item) => item.close()))
   }
 

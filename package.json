@@ -10,8 +10,6 @@
   "dependencies": {
     "connect": "^3.7.0",
     "glob": "^7.1.7",
-    "jasmine-console-reporter": "^3.1.0",
-    "jest-docblock": "^27.0.6",
     "puppeteer": "^10.2.0",
     "puppeteer-to-istanbul": "^1.4.0"
   },
@@ -23,6 +21,8 @@
     "@types/node": "^16.7.6",
     "expect": "^27.1.0",
     "jasmine-core": "^3.9.0",
+    "jest-circus": "^27.1.0",
+    "jest-environment-node": "^27.1.0",
     "jest-mock": "^27.1.0",
     "jest-runtime": "^27.1.0",
     "prettier": "^2.3.2",
@@ -38,6 +38,7 @@
     "jest-mock"
   ],
   "peerDependencies": {
+    "jest-environment-node": "^27.1.0",
     "vite": "^2.5.1"
   }
 }

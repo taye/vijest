@@ -9,6 +9,7 @@ export default defineConfig({
     plugin: 'src/plugin.ts',
     'jest-preset': 'src/jest/preset.ts',
     runner: 'src/jest/runner.ts',
+    environment: 'src/jest/environment.ts',
   },
   external: [/\/node_modules\//, 'fs/promises'],
   output: {

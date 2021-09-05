@@ -2,15 +2,16 @@ import { resolve, join } from 'path'
 import fs from 'fs/promises'
 import { readFileSync } from 'fs'
 import connect from 'connect'
-import JasmineConsoleReporter from 'jasmine-console-reporter'
-import { Plugin, ViteDevServer } from 'vite'
 import queryString from 'query-string'
 
 import type { ViteJasmineOptions } from '../index.d'
 import { getDepUrls, getSpecs, streamPromise } from './utils'
-import { INTERNAL, PLUGIN_NAME, URL_RE } from './constants'
+import { HOST_BASE_PATH, INTERNAL, INTERNAL_SYMBOL_NAME, PLUGIN_NAME, URL_RE } from './constants'
 import { Server } from 'http'
 import { AddressInfo } from 'net'
+import { CustomReporter } from './jest/reporter'
+import { Plugin, ViteDevServer } from 'vite'
+import assert from 'assert'
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
 
@@ -28,7 +29,7 @@ interface Internals {
   app: connect.Server
   httpServer: Server
   getServerUrl: () => string
-  hooks: Set<Record<string | symbol, (arg: any) => Promise<void> | void>>
+  hooks: Set<Partial<CustomReporter>>
 }
 
 export default function viteJasmine(options: InternalOptions = {}): ViteJasminePlugin {
@@ -76,7 +77,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     [INTERNAL]: internals,
 
     config() {
-      return { server: { middlewareMode: 'html', fs: { allow: [__dirname] } } }
+      return { server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] } } }
     },
 
     configResolved(config) {
@@ -84,7 +85,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     },
 
     async transformIndexHtml(html, { path, server }) {
-      if (!server) return
+      assert(server)
 
       const [_, subpath, search] = path.match(URL_RE) || []
 
@@ -109,7 +110,13 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
               tag: 'script',
               children: await getSpecs({ server, cwd: internals.config.root, filenames: query.spec || [] }),
             },
-            { tag: 'script', children: 'window.global = window' },
+            {
+              tag: 'script',
+              children: `Object.assign(window, {
+                global: window,
+                [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: { filename: ${JSON.stringify(query.spec)} }
+              })`,
+            },
             { tag: 'script', attrs: { type: 'module', src: depUrls.client } },
           ]
 
@@ -117,8 +124,6 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     },
 
     async configureServer(server) {
-      const jasmineReporter = new JasmineConsoleReporter()
-
       const templates = Object.fromEntries(
         (['host', 'client'] as const).map((subpath) => [
           subpath,
@@ -126,8 +131,9 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
         ]),
       )
 
-      // TODO: accept only connections from host machine's IP?
       app.use(async (req, res, next) => {
+        if (req.method !== 'GET') return next()
+
         const urlMatch = req.url!.match(URL_RE)
 
         if (!urlMatch) return next()
@@ -140,20 +146,31 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
           return res.end(html)
         }
 
-        if (subpath === 'report') {
+        next()
+      })
+
+      app.use(HOST_BASE_PATH, async (req, res, next) => {
+        if (req.method !== 'POST') return next()
+
+        const method = req.url!.substr(1)
+
+        try {
           const body = await streamPromise(req)
+          const arg: any = JSON.parse(body.toString() || '{}')
 
-          const { method, arg } = JSON.parse(body.toString() || '{}')
+          for (const hook of [...internals.hooks]) {
+            if (hook.filename && hook.filename !== arg.filename) continue
 
-          jasmineReporter[method]?.(arg)
-          res.end()
+            await (hook as any)?.[method]?.(arg)
+          }
 
-          await Promise.all([...internals.hooks].map((hook) => hook?.[method]?.(arg)))
-
-          return
+          return res.end('{}')
+        } catch (error) {
+          console.error(error)
+          res.end(400)
         }
 
-        next()
+        res.end()
       })
 
       app.use(server.middlewares)
