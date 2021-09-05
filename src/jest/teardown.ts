@@ -1,7 +1,8 @@
 import { INTERNAL } from '../constants'
+import { Launcher } from '../launcher'
 
 const teardown = async () => {
-  const { close } = (global as any)[INTERNAL]
+  const { close } = (global as unknown as { [INTERNAL]: Launcher })[INTERNAL]
 
   await close()
 }

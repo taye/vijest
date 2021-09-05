@@ -3,7 +3,8 @@ import fs from 'fs/promises'
 import { readFileSync } from 'fs'
 import connect from 'connect'
 import queryString from 'query-string'
-import { WebSocketServer } from 'ws'
+// @ts-expect-error
+import WebSocket, { WebSocketServer } from 'ws'
 
 import type { ViteJasmineOptions } from '../index.d'
 import { addressToUrl, getDepUrls, getSpecs, streamPromise } from './utils'
@@ -26,17 +27,21 @@ export interface ViteJasminePlugin extends Plugin {
 
 interface Internals {
   options: ViteJasmineOptions
-  config: ViteDevServer['config']
+  config?: ViteDevServer['config']
   app: connect.Server
-  httpServer: Server
+  httpServer?: Server
   wss: any
+  viteServer?: ViteDevServer
   getServerUrl: () => string
+  /** @deprecated */
   hooks: Set<Partial<CustomReporter>>
+  close: () => Promise<void>
 }
 
 export default function viteJasmine(options: InternalOptions = {}): ViteJasminePlugin {
   const isDev = options[INTERNAL]
   const app = connect()
+  const wss = new WebSocketServer({ port: 0 })
 
   const getServerUrl = () => {
     const { baseUrl } = internals.options
@@ -44,7 +49,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
     if (baseUrl) return baseUrl
 
     const address = internals.httpServer?.address() as AddressInfo | null
-    const protocol = internals.config.server.https ? 'https' : 'http'
+    const protocol = internals.config!.server.https ? 'https' : 'http'
 
     return addressToUrl(address, protocol)
   }
@@ -52,11 +57,16 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
   const internals: ViteJasminePlugin[typeof INTERNAL] = {
     options,
     app,
+    wss,
     getServerUrl,
-    httpServer: null as any,
-    wss: null as any,
-    config: null as any,
+    httpServer: undefined,
+    config: undefined,
+    viteServer: undefined,
     hooks: new Set(),
+    close: () =>
+      Promise.all([internals.httpServer?.close(), internals.wss.close(), internals.viteServer?.close()]).then(
+        () => undefined,
+      ),
   }
 
   const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
@@ -122,7 +132,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
       return { html, tags }
     },
 
-    async configureServer(server) {
+    async configureServer(viteServer) {
       const templates = Object.fromEntries(
         (['host', 'client'] as const).map((subpath) => [
           subpath,
@@ -141,7 +151,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
         const template = await templates[subpath || 'host']
 
         if (template) {
-          const html = await server.transformIndexHtml(url, template)
+          const html = await viteServer.transformIndexHtml(url, template)
           return res.end(html)
         }
 
@@ -165,6 +175,7 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
 
           const message = JSON.stringify({ method, arg })
 
+          // send event to every ws client
           for (const client of internals.wss.clients) {
             await client.send(message)
           }
@@ -178,37 +189,19 @@ export default function viteJasmine(options: InternalOptions = {}): ViteJasmineP
         res.end()
       })
 
-      app.use(server.middlewares)
+      app.use(viteServer.middlewares)
 
       const httpServer = app.listen(0)
-      const wss = new WebSocketServer({ port: 0 })
-
-      wss.on('connection', (ws) => {
-        ws.on('message', (message: string) => {
-          const data = JSON.parse(message)
-          const { filename } = data
-
-          if (filename && !ws.filename) {
-            ws.filename = filename
-          }
-
-          wss.clients.forEach((client) => {
-            if (client === ws || client.filename !== filename) return
-
-            // client.send(message)
-          })
-        })
-      })
 
       httpServer.on('upgrade', (request, socket, head) => {
         if (request.url !== HOST_BASE_PATH) return
 
-        wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.handleUpgrade(request, socket, head, (ws: any) => {
           wss.emit('connection', ws, request)
         })
       })
 
-      Object.assign(internals, { httpServer, wss })
+      Object.assign(internals, { httpServer, wss, viteServer })
     },
   }
 }

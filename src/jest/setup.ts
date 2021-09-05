@@ -1,5 +1,5 @@
 import { INTERNAL } from '../constants'
-import { cacheConnection, launch } from '../launcher'
+import { cacheConnection, launch, Launcher } from '../launcher'
 
 const setup = async () => {
   const launchState = await launch({
@@ -8,7 +8,7 @@ const setup = async () => {
     // slowMo: 500,
   })
 
-  ;(global as any)[INTERNAL] = launchState
+  ;(global as unknown as { [INTERNAL]: Launcher })[INTERNAL] = launchState
 
   await cacheConnection(launchState.connection)
 }

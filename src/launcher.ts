@@ -15,6 +15,10 @@ import { addressToUrl, message } from './utils'
 
 type LaunchOptions = Parameters<typeof puppeteer['launch']>[0]
 
+type PromiseResolution<T> = T extends PromiseLike<infer U> ? U : never
+
+export type Launcher = PromiseResolution<ReturnType<typeof launch>>
+
 export interface LaunchConnection {
   baseUrl: string
   wsUrl: string
@@ -52,7 +56,7 @@ export async function launch(options: LaunchOptions = {}) {
   }
 
   const close = () => {
-    return Promise.all([browser.close(), server.close()])
+    return Promise.all([browser.close(), internals.close()])
   }
 
   return { connection, browser, internals, server, close }
