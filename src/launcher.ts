@@ -64,7 +64,7 @@ export async function launch({ launch: puppeteerOptions, ...serverOptions }: Lau
 }
 
 export async function startSpec({ filename, reporter, connection, browser }: StartSpecArg) {
-  const clientUrl = new URL(`${HOST_BASE_PATH}/client`, connection.baseUrl)
+  const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
   url.searchParams.set('spec', filename)

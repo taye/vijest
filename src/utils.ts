@@ -9,14 +9,14 @@ import { AddressInfo } from 'net'
 
 export async function getDepUrls({
   server,
-  customResolve,
+  resolveWeb,
 }: {
   server: import('vite').ViteDevServer
-  customResolve: (s: string) => string
+  resolveWeb: (s: string) => string
 }) {
   const htmlDeps = {
-    // host: customResolve('host/index.ts'),
-    client: customResolve('client/index.ts'),
+    jasmine: resolveWeb('jasmine.ts'),
+    spec: resolveWeb('spec.ts'),
   }
 
   const entryPromises = Object.entries(htmlDeps).map(async ([name, filename]) => [
@@ -25,7 +25,7 @@ export async function getDepUrls({
   ])
   const depIdEntries = await Promise.all(entryPromises)
 
-  return Object.fromEntries(depIdEntries)
+  return Object.fromEntries(depIdEntries) as { [k in keyof typeof htmlDeps]: string }
 }
 
 export function streamPromise(stream: Readable) {

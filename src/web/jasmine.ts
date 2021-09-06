@@ -2,11 +2,15 @@ import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import jestMock from 'jest-mock'
 import expect from 'expect'
 
-import remoteReporter from './remoteReporter'
+import reporter from './remoteReporter'
+import { HOST_BASE_PATH } from '../constants'
 
 export const jasmine = jasmineRequire.core(jasmineRequire)
 
 export const env = jasmine.getEnv()
+
+export type Globals = typeof globals
+export type SpecProps = typeof specProps
 
 env.configure({
   failFast: false,
@@ -18,7 +22,7 @@ env.configure({
 export const jasmineInterface = jasmineRequire.interface(jasmine, env)
 
 env.addReporter(jasmineInterface.jsApiReporter)
-env.addReporter(remoteReporter)
+env.addReporter(reporter)
 
 const { describe, it } = jasmineInterface
 
@@ -32,8 +36,6 @@ const _sab = window.SharedArrayBuffer || ArrayBuffer
 
 export const globals = {
   SharedArrayBuffer: _sab,
-  jasmine,
-  jasmineRequire,
   ...jasmineInterface,
   test: it,
   jest: {
@@ -41,3 +43,20 @@ export const globals = {
   },
   expect,
 }
+
+const specProps = {
+  env,
+  globals,
+  reporter,
+  jasmine,
+  jasmineRequire,
+  specImports: (window as any).__specs as Array<{ filename: string; url: string }>,
+} as const
+
+;(window as any).__specProps = specProps
+
+window.addEventListener('load', () => {
+  const specFrame = document.body.appendChild(document.createElement('iframe'))
+
+  specFrame.src = HOST_BASE_PATH + '/spec'
+})

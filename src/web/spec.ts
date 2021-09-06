@@ -1,20 +1,28 @@
 import * as pretty from 'pretty-format'
-
-import { env, globals } from './jasmine'
-import { CONSOLE_METHODS } from '../constants'
-import reporter from './remoteReporter'
-
-Object.assign(window, globals)
-
 import supportsColor from 'supports-color'
 
+import { CONSOLE_METHODS } from '../constants'
+import type { SpecProps } from './jasmine'
+
+const { parent } = window as any
+
+const { env, globals, specImports, reporter } = parent.__specProps as SpecProps
+
+Object.assign(window, globals, { parent: window })
+
+Object.defineProperty(window, 'frameElement', {
+  get() {
+    return null
+  },
+})
+
 CONSOLE_METHODS.forEach((type) => {
-  const original = console[type]
+  const original = console[type].bind(console)
 
   if (!original) return
 
   console[type] = (...args) => {
-    original.apply(console, args as any)
+    original(...(args as any))
 
     if (type === 'table') type = 'log'
 
@@ -30,7 +38,7 @@ CONSOLE_METHODS.forEach((type) => {
           }
         })
 
-    reporter.console!({ type, args: formattedArgs })
+    reporter.console({ type, args: formattedArgs })
   }
 })
 
@@ -38,7 +46,6 @@ window.addEventListener('load', async () => {
   const errors: Error[] = []
   const pushError = (e: Error) => errors.push(e)
 
-  const specImports: Array<{ filename: string; url: string }> = (window as any).__specs
   const specs = specImports.map(
     ({ filename, url }) => [filename, () => import(/* @vite-ignore */ url).catch(pushError)] as const,
   )

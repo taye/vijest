@@ -16,7 +16,8 @@ export default defineConfig({
     manifest: true,
     rollupOptions: {
       input: {
-        client: resolve(__dirname, 'src/client/index.ts'),
+        jasmine: resolve(__dirname, 'src/web/jasmine.ts'),
+        spec: resolve(__dirname, 'src/web/spec.ts'),
       },
       external: ['supports-color'],
       output: {

@@ -73,14 +73,14 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
   const manifest = isDev ? null : JSON.parse(readFileSync(MANIFEST_PATH).toString())
 
-  const customResolve = (id: string) => {
-    id = join('src', id)
+  const resolveWeb = (id: string) => {
+    id = 'src/web/' + id
     const chunkFile = manifest[id]?.file
 
     return chunkFile ? resolve(__dirname, 'dist', chunkFile) : join('.', id)
   }
 
-  let depUrlsPromise: Promise<Record<string, string>>
+  let depUrlsPromise: Promise<ReturnType<typeof getDepUrls>>
 
   return {
     name: PLUGIN_NAME,
@@ -117,27 +117,16 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
       const [_, subpath, search] = path.match(URL_RE) || []
 
-      const isHost = subpath === ''
-      const isClient = subpath === 'client'
+      const isJasmine = subpath === 'jasmine'
+      const isSpec = subpath === 'spec'
 
-      if (!isHost && !isClient) {
-        return
-      }
+      if (!isJasmine && !isSpec) return
 
       const query = queryString.parse(search)
+      const depUrls = await (depUrlsPromise = depUrlsPromise || getDepUrls({ server, resolveWeb }))
 
-      const depUrls = await (depUrlsPromise = depUrlsPromise || getDepUrls({ server, customResolve }))
-
-      const tags = isHost
+      const tags = isJasmine
         ? [
-            { tag: 'script', children: 'alert("TODO: interactive test runs etc.")' },
-            { tag: 'script', attrs: { type: 'module', src: depUrls.host } },
-          ]
-        : [
-            {
-              tag: 'script',
-              children: await getSpecs({ server, filenames: query.spec || [] }),
-            },
             {
               tag: 'script',
               children: `Object.assign(window, {
@@ -145,8 +134,13 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
                 [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: { filename: ${JSON.stringify(query.spec)} }
               })`,
             },
-            { tag: 'script', attrs: { type: 'module', src: depUrls.client } },
+            {
+              tag: 'script',
+              children: await getSpecs({ server, filenames: query.spec || [] }),
+            },
+            { tag: 'script', attrs: { type: 'module', src: depUrls.jasmine } },
           ]
+        : [{ tag: 'script', attrs: { type: 'module', src: depUrls.spec } }]
 
       return { html, tags }
     },
@@ -154,29 +148,21 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
     async configureServer(viteServer) {
       if (isDev) return
 
-      const templates = Object.fromEntries(
-        (['host', 'client'] as const).map((subpath) => [
-          subpath,
-          fs.readFile(resolve(__dirname, 'src', subpath, 'index.html')).then((b) => b.toString()),
-        ]),
-      )
+      const template = await fs
+        .readFile(resolve(__dirname, 'src', 'web', 'index.html'))
+        .then((b) => b.toString())
 
       app.use(async (req, res, next) => {
         if (req.method !== 'GET') return next()
 
         const urlMatch = req.url!.match(URL_RE)
+        const [url, subpath] = urlMatch || []
 
-        if (!urlMatch) return next()
+        if (!url || (subpath !== 'jasmine' && subpath !== 'spec')) return next()
 
-        const [url, subpath] = urlMatch
-        const template = await templates[subpath || 'host']
+        const html = await viteServer.transformIndexHtml(url, template)
 
-        if (template) {
-          const html = await viteServer.transformIndexHtml(url, template)
-          return res.end(html)
-        }
-
-        next()
+        return res.end(html)
       })
 
       app.use(HOST_BASE_PATH, async (req, res, next) => {
