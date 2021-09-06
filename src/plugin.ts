@@ -89,7 +89,12 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
     config() {
       return {
-        server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] }, open: false },
+        server: {
+          middlewareMode: 'html',
+          fs: { allow: [__dirname, process.cwd()] },
+          open: false,
+          hmr: false,
+        },
       }
     },
 
