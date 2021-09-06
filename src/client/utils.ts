@@ -15,7 +15,7 @@ export async function post(path: string, body?: any) {
 export function postSync(path: string, body?: any) {
   const xhr = new XMLHttpRequest()
 
-  xhr.open('POST', HOST_BASE_PATH + path, false)
+  xhr.open('POST', `${HOST_BASE_PATH}/${path}`, false)
   xhr.send(body && JSON.stringify(body))
 
   return JSON.parse(xhr.responseText || 'null')

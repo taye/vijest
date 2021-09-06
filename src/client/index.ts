@@ -1,6 +1,28 @@
+import * as pretty from 'pretty-format'
+
 import { env, globals } from './jasmine'
+import { CONSOLE_METHODS } from '../constants'
+import reporter from './remoteReporter'
 
 Object.assign(window, globals)
+
+CONSOLE_METHODS.forEach((type) => {
+  const original = console[type]
+
+  if (!original) return
+
+  console[type] = (...args) => {
+    original.apply(console, args as any)
+
+    if (type === 'table') type = 'log'
+
+    const formattedArgs = type.startsWith('count')
+      ? args.map((arg) => arg.toString())
+      : args.map((arg) => pretty.format(arg, { plugins: Object.values(pretty.plugins), highlight: true }))
+
+    reporter.console!({ type, args: formattedArgs })
+  }
+})
 
 window.addEventListener('load', async () => {
   const errors: Error[] = []
@@ -13,8 +35,7 @@ window.addEventListener('load', async () => {
 
   // load tests
   await Promise.all(
-    specs.map(([filename, importer]) => {
-      console.log('[jasmine client]', 'loading:', filename)
+    specs.map(([_, importer]) => {
       return importer()
     }),
   )

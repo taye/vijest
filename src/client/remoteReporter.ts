@@ -10,6 +10,7 @@ const methods = [
   'specStarted',
   'specDone',
   'jasmineDone',
+  'console',
 ] as const
 
 const { filename } = (global as any)[INTERNAL]

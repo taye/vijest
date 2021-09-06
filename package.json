@@ -32,6 +32,7 @@
     "jest-mock": "^27.1.0",
     "jest-runtime": "^27.1.0",
     "prettier": "^2.3.2",
+    "pretty-format": "^27.1.0",
     "query-string": "^7.0.1",
     "rollup": "^2.56.3",
     "rollup-plugin-esbuild": "^4.5.0",
@@ -41,7 +42,8 @@
   "bundledDependencies": [
     "expect",
     "jasmine-core",
-    "jest-mock"
+    "jest-mock",
+    "pretty-format"
   ],
   "peerDependencies": {
     "jest-circus": "^27.1.0",

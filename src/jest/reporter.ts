@@ -8,6 +8,11 @@
 import { AssertionResult, TestResult, createEmptyTestResult } from '@jest/test-result'
 import type { Config } from '@jest/types'
 import { formatResultsErrors } from 'jest-message-util'
+import { CONSOLE_METHODS } from '../constants'
+
+import type Environment from './environment'
+
+type ArrayElementType<T> = T extends ArrayLike<infer P> ? P : never
 
 export type CustomReporter = {
   jasmineDone: (arg: any) => void
@@ -16,6 +21,7 @@ export type CustomReporter = {
   specStarted: (arg: any) => void
   suiteDone: (arg: any) => void
   suiteStarted: (arg: any) => void
+  console?: (arg: { type: ArrayElementType<typeof CONSOLE_METHODS>; args: string[] }) => void
   filename?: string
 }
 
@@ -31,9 +37,15 @@ export class Reporter implements CustomReporter {
   private _startTimes: Map<string, Microseconds>
   private _testPath: Config.Path
 
+  private _environment: Environment
   filename: string
 
-  constructor(globalConfig: Config.GlobalConfig, config: Config.ProjectConfig, testPath: Config.Path) {
+  constructor(
+    globalConfig: Config.GlobalConfig,
+    config: Config.ProjectConfig,
+    testPath: Config.Path,
+    environment: Environment,
+  ) {
     this._globalConfig = globalConfig
     this._config = config
     this._testPath = testPath
@@ -43,6 +55,7 @@ export class Reporter implements CustomReporter {
     this._resultsPromise = new Promise((resolve) => (this._resolve = resolve))
     this._startTimes = new Map()
 
+    this._environment = environment
     this.filename = testPath
   }
 
@@ -152,5 +165,9 @@ export class Reporter implements CustomReporter {
     })
 
     return results
+  }
+
+  console: CustomReporter['console'] = ({ type, args }) => {
+    this._environment.global.console[type](...args)
   }
 }

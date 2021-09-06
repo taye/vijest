@@ -1,6 +1,5 @@
 import type { Config } from '@jest/types'
 import type { TestResult } from '@jest/test-result'
-import type { JestEnvironment } from '@jest/environment'
 import type Runtime from 'jest-runtime'
 
 import { INTERNAL } from '../constants'
@@ -11,18 +10,18 @@ import { connectToLauncher } from '../launcher'
 async function runner(
   globalConfig: Config.GlobalConfig,
   config: Config.ProjectConfig,
-  environment: JestEnvironment,
+  environment: Environment,
   runtime: Runtime,
   testPath: string,
 ): Promise<TestResult> {
-  if (!(environment as Environment)[INTERNAL]) {
+  if (!environment[INTERNAL]) {
     const defaultRunner =
       process.env.JEST_JASMINE === '1' ? require('jest-jasmine2') : require('jest-circus/runner')
 
     return defaultRunner(globalConfig, config, environment, runtime, testPath)
   }
 
-  const reporter = new Reporter(globalConfig, config, testPath)
+  const reporter = new Reporter(globalConfig, config, testPath, environment)
   const { startSpec } = await connectToLauncher()
   const { page } = await startSpec({ filename: testPath, reporter })
   const results = await reporter.getResults()
