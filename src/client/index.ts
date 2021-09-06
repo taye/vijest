@@ -22,7 +22,13 @@ CONSOLE_METHODS.forEach((type) => {
 
     const formattedArgs = type.startsWith('count')
       ? args.map((arg) => arg.toString())
-      : args.map((arg) => pretty.format(arg, { plugins: Object.values(pretty.plugins), highlight }))
+      : args.map((arg) => {
+          try {
+            return pretty.format(arg, { plugins: Object.values(pretty.plugins), highlight })
+          } catch {
+            return arg
+          }
+        })
 
     reporter.console!({ type, args: formattedArgs })
   }
