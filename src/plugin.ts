@@ -88,11 +88,21 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
     [INTERNAL]: internals,
 
     config() {
-      return { server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] }, open: false } }
+      return {
+        server: { middlewareMode: 'html', fs: { allow: [__dirname, process.cwd()] }, open: false },
+      }
     },
 
     configResolved(config) {
       internals.config = config
+    },
+
+    async load(id) {
+      if (!/supports-color/.test(id)) return null
+
+      const { default: supportsColor } = await import('supports-color')
+
+      return { code: `export default ${JSON.stringify(supportsColor)}`, map: null }
     },
 
     async transformIndexHtml(html, { path, server }) {

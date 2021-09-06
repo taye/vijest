@@ -18,17 +18,12 @@ export default defineConfig({
       input: {
         client: resolve(__dirname, 'src/client/index.ts'),
       },
-      external: ['sinon'],
+      external: ['supports-color'],
       output: {
         format: 'es',
         sourcemap: !isProd,
       },
     },
     minify: isProd,
-    terserOptions: {
-      format: {
-        comments: /@vite/,
-      },
-    },
   },
 })

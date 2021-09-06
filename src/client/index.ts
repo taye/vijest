@@ -6,6 +6,8 @@ import reporter from './remoteReporter'
 
 Object.assign(window, globals)
 
+import supportsColor from 'supports-color'
+
 CONSOLE_METHODS.forEach((type) => {
   const original = console[type]
 
@@ -16,9 +18,11 @@ CONSOLE_METHODS.forEach((type) => {
 
     if (type === 'table') type = 'log'
 
+    const highlight = !!supportsColor.stdout
+
     const formattedArgs = type.startsWith('count')
       ? args.map((arg) => arg.toString())
-      : args.map((arg) => pretty.format(arg, { plugins: Object.values(pretty.plugins), highlight: true }))
+      : args.map((arg) => pretty.format(arg, { plugins: Object.values(pretty.plugins), highlight }))
 
     reporter.console!({ type, args: formattedArgs })
   }

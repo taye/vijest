@@ -21,5 +21,12 @@ export default defineConfig({
     dir: __dirname,
     chunkFileNames: '[name].js',
   },
-  plugins: [esbuild(), nodeResolve()],
+  plugins: [esbuild(), nodeResolve(), dynamicImport()],
 })
+
+function dynamicImport() {
+  return {
+    name: 'vitest-internal/dynamic-import',
+    renderDynamicImport: () => ({ left: 'import(', right: ')' }),
+  }
+}
