@@ -41,7 +41,6 @@ interface Internals {
 export default function vitest(options: InternalOptions = {}): VitestPlugin {
   const isDev = options[INTERNAL]
   const app = connect()
-  const wss = new WebSocketServer({ port: 0 })
 
   const getBaseUrl = () => {
     const base = internals.config?.base
@@ -60,8 +59,8 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
   const internals: VitestPlugin[typeof INTERNAL] = {
     options,
     app,
-    wss,
     getBaseUrl,
+    wss: undefined,
     httpServer: undefined,
     config: undefined,
     viteServer: undefined,
@@ -97,6 +96,8 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
     },
 
     async transformIndexHtml(html, { path, server }) {
+      if (isDev) return undefined
+
       assert(server)
 
       const [_, subpath, search] = path.match(URL_RE) || []
@@ -136,6 +137,8 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
     },
 
     async configureServer(viteServer) {
+      if (isDev) return
+
       const templates = Object.fromEntries(
         (['host', 'client'] as const).map((subpath) => [
           subpath,
@@ -200,13 +203,7 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
       const httpServer = app.listen(port as number, hostname)
 
-      httpServer.on('upgrade', (request, socket, head) => {
-        if (request.url !== HOST_BASE_PATH) return
-
-        wss.handleUpgrade(request, socket, head, (ws: any) => {
-          wss.emit('connection', ws, request)
-        })
-      })
+      const wss = new WebSocketServer({ port: 0 })
 
       Object.assign(internals, { httpServer, wss, viteServer })
     },
