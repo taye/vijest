@@ -1,19 +1,21 @@
-import { resolve, join } from 'path'
-import fs from 'fs/promises'
+import assert from 'assert'
 import { readFileSync } from 'fs'
+import fs from 'fs/promises'
+import type { Server } from 'http'
+import type { AddressInfo } from 'net'
+import { resolve, join } from 'path'
+
 import connect from 'connect'
 import queryString from 'query-string'
+import type { Plugin, ViteDevServer } from 'vite'
 // @ts-expect-error
-import WebSocket, { WebSocketServer } from 'ws'
+import { WebSocketServer } from 'ws'
 
 import type { VitestOptions } from '../index.d'
-import { addressToUrl, getDepUrls, getSpecs, streamPromise } from './utils'
+
 import { HOST_BASE_PATH, INTERNAL, INTERNAL_SYMBOL_NAME, PLUGIN_NAME, URL_RE } from './constants'
-import { Server } from 'http'
-import { AddressInfo } from 'net'
-import { CustomReporter } from './jest/reporter'
-import { Plugin, ViteDevServer } from 'vite'
-import assert from 'assert'
+import type { CustomReporter } from './jest/reporter'
+import { addressToUrl, getDepUrls, getSpecs, streamPromise } from './utils'
 
 const MANIFEST_PATH = resolve(__dirname, './dist/manifest.json')
 
@@ -30,7 +32,7 @@ interface Internals {
   config?: ViteDevServer['config']
   app: connect.Server
   httpServer?: Server
-  wss: any
+  wss: WebSocketServer
   viteServer?: ViteDevServer
   getBaseUrl: () => string
   /** @deprecated */
@@ -38,7 +40,7 @@ interface Internals {
   close: () => Promise<void>
 }
 
-export default function vitest(options: InternalOptions = {}): VitestPlugin {
+export default function vitest (options: InternalOptions = {}): VitestPlugin {
   const isDev = options[INTERNAL]
   const app = connect()
 
@@ -87,7 +89,7 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
     [INTERNAL]: internals,
 
-    config() {
+    config () {
       return {
         server: {
           middlewareMode: 'html',
@@ -98,11 +100,11 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
       }
     },
 
-    configResolved(config) {
+    configResolved (config) {
       internals.config = config
     },
 
-    async load(id) {
+    async load (id) {
       if (/supports-color/.test(id)) {
         const { default: supportsColor } = await import(/* @vite-ignore */ 'supports-color')
 
@@ -116,7 +118,7 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
       return null
     },
 
-    async transformIndexHtml(html, { path, server }) {
+    async transformIndexHtml (html, { path, server }) {
       if (isDev) return undefined
 
       assert(server)
@@ -151,7 +153,7 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
       return { html, tags }
     },
 
-    async configureServer(viteServer) {
+    async configureServer (viteServer) {
       if (isDev) return
 
       const template = await fs
@@ -178,12 +180,13 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
 
         try {
           const body = await streamPromise(req)
-          const arg: any = JSON.parse(body.toString() || '{}')
+          const arg = JSON.parse(body.toString() || '{}')
 
           for (const hook of [...internals.hooks]) {
             if (hook.filename && hook.filename !== arg.filename) continue
 
-            await (hook as any)?.[method]?.(arg)
+            // @ts-expect-error
+            await hook?.[method]?.(arg)
           }
 
           const message = JSON.stringify({ method, arg })

@@ -5,10 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { AssertionResult, TestResult, createEmptyTestResult } from '@jest/test-result'
+import type { AssertionResult, TestResult } from '@jest/test-result'
+import { createEmptyTestResult } from '@jest/test-result'
 import type { Config } from '@jest/types'
 import { formatResultsErrors } from 'jest-message-util'
-import { CONSOLE_METHODS } from '../constants'
+
+import type { CONSOLE_METHODS } from '../constants'
 
 import type Environment from './environment'
 
@@ -40,7 +42,7 @@ export class Reporter implements CustomReporter {
   private _environment: Environment
   filename: string
 
-  constructor(
+  constructor (
     globalConfig: Config.GlobalConfig,
     config: Config.ProjectConfig,
     testPath: Config.Path,
@@ -59,25 +61,25 @@ export class Reporter implements CustomReporter {
     this.filename = testPath
   }
 
-  jasmineStarted(_runDetails: any): void {}
+  jasmineStarted (_runDetails: any): void {}
 
-  specStarted(spec: any): void {
+  specStarted (spec: any): void {
     this._startTimes.set(spec.id, Date.now())
   }
 
-  specDone(result: any): void {
+  specDone (result: any): void {
     this._testResults.push(this._extractSpecResults(result, this._currentSuites.slice(0)))
   }
 
-  suiteStarted(suite: any): void {
+  suiteStarted (suite: any): void {
     this._currentSuites.push(suite.description)
   }
 
-  suiteDone(_result: any): void {
+  suiteDone (_result: any): void {
     this._currentSuites.pop()
   }
 
-  jasmineDone(_runDetails: any): void {
+  jasmineDone (_runDetails: any): void {
     let numFailingTests = 0
     let numPassingTests = 0
     let numPendingTests = 0
@@ -118,11 +120,11 @@ export class Reporter implements CustomReporter {
     this._resolve(testResult)
   }
 
-  getResults(): Promise<TestResult> {
+  getResults (): Promise<TestResult> {
     return this._resultsPromise
   }
 
-  private _addMissingMessageToStack(stack: string, message?: string) {
+  private _addMissingMessageToStack (stack: string, message?: string) {
     // Some errors (e.g. Angular injection error) don't prepend error.message
     // to stack, instead the first line of the stack is just plain 'Error'
     const ERROR_REGEX = /^Error:?\s*\n/
@@ -133,7 +135,7 @@ export class Reporter implements CustomReporter {
     return stack
   }
 
-  private _extractSpecResults(specResult: any, ancestorTitles: Array<string>): AssertionResult {
+  private _extractSpecResults (specResult: any, ancestorTitles: Array<string>): AssertionResult {
     const start = this._startTimes.get(specResult.id)
     const duration = start ? Date.now() - start : undefined
     const status = specResult.status === 'disabled' ? 'pending' : specResult.status

@@ -1,20 +1,22 @@
-import { dirname } from 'path'
 import assert from 'assert'
-import puppeteer from 'puppeteer'
-import { createServer } from 'vite'
-import pti from 'puppeteer-to-istanbul'
-import findCacheDir from 'find-cache-dir'
 import { readFile, writeFile } from 'fs/promises'
-import WebSocket from 'ws'
-import mkdirp from 'mkdirp'
+import { dirname } from 'path'
 
-import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
-import vitest from './plugin'
-import type { Reporter } from './jest/reporter'
-import { addressToUrl, message } from './utils'
+import findCacheDir from 'find-cache-dir'
+import mkdirp from 'mkdirp'
+import puppeteer from 'puppeteer'
+import pti from 'puppeteer-to-istanbul'
+import { createServer } from 'vite'
+import WebSocket from 'ws'
+
 import type { VitestOptions } from '../index.d'
 
-export interface LaunchOptions extends VitestOptions {}
+import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
+import type { Reporter } from './jest/reporter'
+import vitest from './plugin'
+import { addressToUrl, message } from './utils'
+
+export type LaunchOptions = VitestOptions
 
 type PromiseResolution<T> = T extends PromiseLike<infer U> ? U : never
 
@@ -36,7 +38,7 @@ export interface StartSpecArg {
   browser: puppeteer.Browser
 }
 
-export async function launch({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
+export async function launch ({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
   const { server, internals, baseUrl } = await createViteServer(serverOptions)
 
   const browser = await puppeteer.launch({
@@ -63,7 +65,7 @@ export async function launch({ launch: puppeteerOptions, ...serverOptions }: Lau
   return { connection, browser, internals, server, close }
 }
 
-export async function startSpec({ filename, reporter, connection, browser }: StartSpecArg) {
+export async function startSpec ({ filename, reporter, connection, browser }: StartSpecArg) {
   const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
@@ -97,7 +99,7 @@ export async function startSpec({ filename, reporter, connection, browser }: Sta
   return { page, close }
 }
 
-async function createViteServer(options: VitestOptions) {
+async function createViteServer (options: VitestOptions) {
   const plugin = vitest(options)
   const internals = plugin[INTERNAL]
 
@@ -134,7 +136,7 @@ const getConnectionCachePath = () => {
   return cacheDir('state.json')
 }
 
-export async function cacheConnection(state: any) {
+export async function cacheConnection (state: any) {
   const path = getConnectionCachePath()
   const dir = dirname(path)
 
@@ -143,7 +145,7 @@ export async function cacheConnection(state: any) {
   return writeFile(path, JSON.stringify(state))
 }
 
-export async function connectToLauncher() {
+export async function connectToLauncher () {
   let connection!: LaunchConnection
 
   try {

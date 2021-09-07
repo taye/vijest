@@ -1,17 +1,18 @@
-import type { Readable } from 'stream'
-import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
-import { relative, sep } from 'path'
 import assert from 'assert'
+import type { AddressInfo } from 'net'
+import { relative, sep } from 'path'
+import type { Readable } from 'stream'
+
+import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
 
 import { INTERNAL, PLUGIN_NAME } from './constants'
-import { VitestPlugin } from './plugin'
-import { AddressInfo } from 'net'
+import type { VitestPlugin } from './plugin'
 
-export async function getDepUrls({
+export async function getDepUrls ({
   server,
   resolveWeb,
 }: {
-  server: import('vite').ViteDevServer
+  server: ViteDevServer
   resolveWeb: (s: string) => string
 }) {
   const htmlDeps = {
@@ -28,7 +29,7 @@ export async function getDepUrls({
   return Object.fromEntries(depIdEntries) as { [k in keyof typeof htmlDeps]: string }
 }
 
-export function streamPromise(stream: Readable) {
+export function streamPromise (stream: Readable) {
   return new Promise<Buffer>((resolve) => {
     const chunks: Buffer[] = []
 
@@ -37,7 +38,7 @@ export function streamPromise(stream: Readable) {
   })
 }
 
-export async function getSpecs({
+export async function getSpecs ({
   filenames,
   server,
 }: {
@@ -56,7 +57,7 @@ export async function getSpecs({
   return `window.global = window; window.__specs = ${JSON.stringify(specs)}`
 }
 
-export async function resolveToUrl({ server, filename }: { server: ViteDevServer; filename: string }) {
+export async function resolveToUrl ({ server, filename }: { server: ViteDevServer; filename: string }) {
   let relativePath = relative(server.config.root, filename)
 
   if (relativePath[0] !== '.') {
@@ -74,17 +75,17 @@ export async function resolveToUrl({ server, filename }: { server: ViteDevServer
   return server.moduleGraph.getModuleById(id)!.url
 }
 
-export function findPlugin(config: UserConfig | ResolvedConfig) {
+export function findPlugin (config: UserConfig | ResolvedConfig) {
   const plugins = (config?.plugins || []).flat() as unknown as VitestPlugin[]
 
   return plugins.find((p) => p && p[INTERNAL])
 }
 
-export function message(s: string) {
+export function message (s: string) {
   return `[${PLUGIN_NAME}] ${s}`
 }
 
-export function addressToUrl(addressInfo: AddressInfo | null, protocol: string) {
+export function addressToUrl (addressInfo: AddressInfo | null, protocol: string) {
   if (!addressInfo) return ''
 
   const address = /:/.test(addressInfo.address) ? `[${addressInfo.address}]` : addressInfo.address

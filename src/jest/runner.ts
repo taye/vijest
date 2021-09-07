@@ -1,13 +1,14 @@
-import type { Config } from '@jest/types'
 import type { TestResult } from '@jest/test-result'
+import type { Config } from '@jest/types'
 import type Runtime from 'jest-runtime'
 
 import { INTERNAL } from '../constants'
-import { Reporter } from './reporter'
-import Environment from './environment'
 import { connectToLauncher } from '../launcher'
 
-async function runner(
+import type Environment from './environment'
+import { Reporter } from './reporter'
+
+async function runner (
   globalConfig: Config.GlobalConfig,
   config: Config.ProjectConfig,
   environment: Environment,

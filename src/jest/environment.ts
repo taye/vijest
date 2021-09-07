@@ -1,4 +1,5 @@
 import NodeEnvironment from 'jest-environment-node'
+
 import { INTERNAL } from '../constants'
 
 export default class Environment extends NodeEnvironment {
@@ -6,7 +7,7 @@ export default class Environment extends NodeEnvironment {
   // allow distinction of vitest environment
   [INTERNAL] = true
 
-  constructor(...args: any[]) {
+  constructor (...args: any[]) {
     // @ts-expect-error
     super(...args)
   }

@@ -1,8 +1,9 @@
 import { resolve } from 'path'
 
-import { VitestOptions } from '../..'
+import type { VitestOptions } from '../..'
 import { INTERNAL, PLUGIN_NAME } from '../constants'
-import { cacheConnection, launch, Launcher } from '../launcher'
+import type { Launcher } from '../launcher'
+import { cacheConnection, launch } from '../launcher'
 
 const setup = async () => {
   const { launch: launchOptions, ...serverOptions } = await getConfig()
@@ -22,7 +23,7 @@ setup.__filename = __filename
 
 export default setup
 
-async function getConfig(): Promise<VitestOptions> {
+async function getConfig (): Promise<VitestOptions> {
   const configName = resolve(PLUGIN_NAME + '.config.js')
 
   try {

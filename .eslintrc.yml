@@ -1,0 +1,36 @@
+parser: '@typescript-eslint/parser'
+
+parserOptions:
+  sourceType: module
+  ecmaVersion: 2020
+
+plugins:
+  - '@typescript-eslint'
+
+extends:
+  - 'plugin:@typescript-eslint/recommended'
+  - 'plugin:import/typescript'
+  - 'plugin:import/errors'
+
+rules:
+  '@typescript-eslint/ban-ts-comment': off
+  '@typescript-eslint/consistent-type-imports': error
+  '@typescript-eslint/explicit-module-boundary-types': off
+  '@typescript-eslint/no-empty-function': off
+  '@typescript-eslint/no-non-null-assertion': off
+  import/order:
+    [
+      error,
+      {
+        alphabetize: { order: asc },
+        newlines-between: always,
+        groups: [builtin, external, internal, parent],
+      },
+    ]
+  space-before-function-paren: error
+
+overrides:
+  - files: '*.spec.ts'
+    extends:
+      - 'plugin:jest/recommended'
+      - 'plugin:jest/style'

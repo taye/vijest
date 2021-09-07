@@ -1,5 +1,5 @@
 import { INTERNAL } from '../constants'
-import { CustomReporter } from '../jest/reporter'
+import type { CustomReporter } from '../jest/reporter'
 
 import { post } from './utils'
 

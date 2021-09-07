@@ -1,6 +1,6 @@
+import nodeResolve from '@rollup/plugin-node-resolve'
 import { defineConfig } from 'rollup'
 import esbuild from 'rollup-plugin-esbuild'
-import nodeResolve from '@rollup/plugin-node-resolve'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -24,7 +24,7 @@ export default defineConfig({
   plugins: [esbuild(), nodeResolve(), dynamicImport()],
 })
 
-function dynamicImport() {
+function dynamicImport () {
   return {
     name: 'vitest-internal/dynamic-import',
     renderDynamicImport: () => ({ left: 'import(', right: ')' }),

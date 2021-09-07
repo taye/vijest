@@ -5,22 +5,24 @@
   "scripts": {
     "build": "tsc -b && NODE_ENV=production yarn build:rollup",
     "dev": "yarn build:rollup --watch | vite build --mode=development --watch",
-    "build:rollup": "rollup -c rollup.config.ts --configPlugin rollup-plugin-esbuild "
+    "build:rollup": "rollup -c rollup.config.ts --configPlugin rollup-plugin-esbuild ",
+    "prepare": "husky install"
   },
   "dependencies": {
-    "connect": "^3.7.0",
-    "find-cache-dir": "^3.3.2",
-    "glob": "^7.1.7",
-    "mkdirp": "^1.0.4",
-    "puppeteer": "^10.2.0",
+    "@testing-library/jest-dom": "*",
+    "connect": "^3",
+    "find-cache-dir": "^3",
+    "glob": "^7",
+    "mkdirp": "^1",
+    "puppeteer": "^10",
     "puppeteer-to-istanbul": "^1.4.0",
-    "supports-color": "^9.0.2",
     "ws": "^8.2.1"
   },
   "devDependencies": {
     "@jest/environment": "^27.1.0",
     "@jest/fake-timers": "^27.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
+    "@testing-library/jest-dom": "^5.14.1",
     "@types/connect": "^3.4.35",
     "@types/find-cache-dir": "^3.2.1",
     "@types/jest": "^27.0.1",
@@ -28,29 +30,45 @@
     "@types/node": "^16.7.13",
     "@types/supports-color": "^8.1.1",
     "@types/ws": "^7.4.7",
+    "@typescript-eslint/eslint-plugin": "^4.31.0",
+    "@typescript-eslint/parser": "^4.31.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-import": "^2.24.2",
+    "eslint-plugin-jest": "^24.4.0",
     "expect": "^27.1.0",
+    "husky": "^7.0.2",
     "jasmine-core": "^3.9.0",
     "jest-circus": "^27.1.0",
     "jest-environment-node": "^27.1.0",
     "jest-mock": "^27.1.0",
     "jest-runtime": "^27.1.0",
+    "lint-staged": "^11.1.2",
     "prettier": "^2.3.2",
     "pretty-format": "^27.1.0",
     "query-string": "^7.0.1",
     "rollup": "^2.56.3",
     "rollup-plugin-esbuild": "^4.5.0",
+    "supports-color": "^9.0.2",
     "typescript": "^4.3.2",
     "vite": "^2.5.4"
   },
   "bundledDependencies": [
-    "expect",
     "jasmine-core",
-    "jest-mock",
     "pretty-format"
   ],
   "peerDependencies": {
-    "jest-circus": "^27.1.0",
-    "jest-environment-node": "^27.1.0",
-    "vite": "^2.5.1"
+    "expect": "*",
+    "jest-circus": "*",
+    "jest-environment-node": "*",
+    "jest-mock": "*",
+    "supports-color": ">=5",
+    "vite": "2"
+  },
+  "lint-staged": {
+    "**/*.(json|css|html|md|yml|yaml)": "prettier -w",
+    "**/*.ts": [
+      "prettier -w",
+      "eslint --fix"
+    ]
   }
 }

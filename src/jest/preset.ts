@@ -1,4 +1,5 @@
 import type { Config } from '@jest/types'
+
 import Environment from './environment'
 import runner from './runner'
 import setup from './setup'

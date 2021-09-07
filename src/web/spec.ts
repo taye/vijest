@@ -2,6 +2,7 @@ import * as pretty from 'pretty-format'
 import supportsColor from 'supports-color'
 
 import { CONSOLE_METHODS } from '../constants'
+
 import type { SpecProps } from './jasmine'
 
 const { parent } = window as any
@@ -11,7 +12,7 @@ const { env, globals, specImports, reporter, makeJest } = parent.__specProps as 
 Object.assign(window, globals, { parent: window, jest: makeJest(window) })
 
 Object.defineProperty(window, 'frameElement', {
-  get() {
+  get () {
     return null
   },
 })
