@@ -6,9 +6,9 @@ import type { SpecProps } from './jasmine'
 
 const { parent } = window as any
 
-const { env, globals, specImports, reporter } = parent.__specProps as SpecProps
+const { env, globals, specImports, reporter, makeJest } = parent.__specProps as SpecProps
 
-Object.assign(window, globals, { parent: window })
+Object.assign(window, globals, { parent: window, jest: makeJest(window) })
 
 Object.defineProperty(window, 'frameElement', {
   get() {

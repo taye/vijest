@@ -19,12 +19,13 @@
   },
   "devDependencies": {
     "@jest/environment": "^27.1.0",
+    "@jest/fake-timers": "^27.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@types/connect": "^3.4.35",
     "@types/find-cache-dir": "^3.2.1",
     "@types/jest": "^27.0.1",
     "@types/mkdirp": "^1.0.2",
-    "@types/node": "^16.7.6",
+    "@types/node": "^16.7.13",
     "@types/supports-color": "^8.1.1",
     "@types/ws": "^7.4.7",
     "expect": "^27.1.0",
@@ -39,7 +40,7 @@
     "rollup": "^2.56.3",
     "rollup-plugin-esbuild": "^4.5.0",
     "typescript": "^4.3.2",
-    "vite": "^2.5.1"
+    "vite": "^2.5.4"
   },
   "bundledDependencies": [
     "expect",

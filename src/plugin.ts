@@ -103,11 +103,17 @@ export default function vitest(options: InternalOptions = {}): VitestPlugin {
     },
 
     async load(id) {
-      if (!/supports-color/.test(id)) return null
+      if (/supports-color/.test(id)) {
+        const { default: supportsColor } = await import(/* @vite-ignore */ 'supports-color')
 
-      const { default: supportsColor } = await import('supports-color')
+        return { code: `export default ${JSON.stringify(supportsColor)}`, map: null }
+      }
 
-      return { code: `export default ${JSON.stringify(supportsColor)}`, map: null }
+      if (id.includes('jest-util/build/isInteractive')) {
+        return { code: 'export default false', map: undefined }
+      }
+
+      return null
     },
 
     async transformIndexHtml(html, { path, server }) {
