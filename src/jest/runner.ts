@@ -17,7 +17,7 @@ async function runner (
 ): Promise<TestResult> {
   if (!environment[INTERNAL]) {
     const defaultRunner =
-      process.env.JEST_JASMINE === '1' ? require('jest-jasmine2') : require(config.testRunner)
+      process.env.JEST_JASMINE === '1' ? require('jest-jasmine2') : require('jest-circus/runner')
 
     return defaultRunner(globalConfig, config, environment, runtime, testPath)
   }
