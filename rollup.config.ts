@@ -7,7 +7,7 @@ const isProd = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
   input: {
-    plugin: 'src/plugin.ts',
+    plugin: 'src/plugin/index.ts',
     'jest-preset': 'src/jest/preset.ts',
     setup: 'src/jest/setup.ts',
     teardown: 'src/jest/teardown.ts',
