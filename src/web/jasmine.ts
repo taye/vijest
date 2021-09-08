@@ -1,7 +1,7 @@
 import { ModernFakeTimers } from '@jest/fake-timers'
 import expect from 'expect'
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
-import jestMock from 'jest-mock'
+import * as jestMock from 'jest-mock'
 
 import { HOST_BASE_PATH } from '../constants'
 
