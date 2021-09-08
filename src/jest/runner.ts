@@ -27,7 +27,7 @@ async function runner (
   const { page } = await startSpec({ filename: testPath, reporter })
   const results = await reporter.getResults()
 
-  await page.close()
+  page.close()
 
   return results
 }
