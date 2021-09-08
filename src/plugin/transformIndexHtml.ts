@@ -1,7 +1,7 @@
 import assert from 'assert'
 
 import queryString from 'query-string'
-import type { Plugin } from 'vite'
+import type { IndexHtmlTransform, Plugin } from 'vite'
 
 import { INTERNAL_SYMBOL_NAME, URL_RE } from '../constants'
 import { getDepUrls, getSpecs } from '../utils'
@@ -10,9 +10,8 @@ import type { Internals } from '.'
 
 let depUrlsPromise: Promise<ReturnType<typeof getDepUrls>>
 
-const transformIndexHtml =
-  ({ resolveWeb }: Internals): Plugin['transformIndexHtml'] =>
-  async (html, { path, server }) => {
+const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHtml'] => {
+  const transform: IndexHtmlTransform = async (html, { path, server }) => {
     assert(server)
 
     const [, subpath, search] = path.match(URL_RE) || []
@@ -43,5 +42,8 @@ const transformIndexHtml =
 
     return { html, tags }
   }
+
+  return { enforce: 'pre', transform }
+}
 
 export default transformIndexHtml

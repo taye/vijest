@@ -1,15 +1,26 @@
+import assert from 'assert'
+
 import type { Plugin } from 'vite'
 
-import { STUBBED_WEB_DEPS } from '../constants'
+import { INTERNAL, STUBBED_WEB_DEPS } from '../constants'
 
-import type { Internals } from '.'
+import type { Internals, VitestPlugin } from '.'
 
 const config =
   ({ isDev, rootDir, resolveWeb }: Internals): Plugin['config'] =>
-  () => {
+  (config) => {
+    const plugins = [...(config.plugins || [])] as VitestPlugin[]
+    const pluginIndex = plugins.findIndex((p) => p[INTERNAL])!
+    const pluginInstance = plugins[pluginIndex]
+
+    assert(pluginInstance)
+
+    plugins.splice(pluginIndex, 1)
+
     const stubFile = resolveWeb('stub.ts')
 
     return {
+      plugins,
       server: isDev
         ? undefined
         : {
