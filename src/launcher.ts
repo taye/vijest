@@ -39,15 +39,17 @@ export interface StartSpecArg {
 }
 
 export async function launch ({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
-  const { server, internals, baseUrl } = await createViteServer(serverOptions)
+  const [{ server, internals, baseUrl }, browser] = await Promise.all([
+    createViteServer(serverOptions),
 
-  const browser = await puppeteer.launch({
-    // TODO
-    executablePath: 'chromium',
-    ignoreHTTPSErrors: true,
-    ...puppeteerOptions,
-    args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
-  })
+    puppeteer.launch({
+      // TODO
+      executablePath: 'chromium',
+      ignoreHTTPSErrors: true,
+      ...puppeteerOptions,
+      args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
+    }),
+  ])
 
   const connection: LaunchConnection = {
     baseUrl,

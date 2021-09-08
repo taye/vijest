@@ -58,9 +58,8 @@
   ],
   "peerDependencies": {
     "expect": "*",
-    "jest-circus": "*",
-    "jest-environment-node": "*",
-    "jest-mock": "*",
+    "jest-environment-node": ">=15",
+    "jest-mock": ">=15",
     "supports-color": ">=5",
     "vite": "2"
   },

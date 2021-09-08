@@ -1,4 +1,5 @@
 import nodeResolve from '@rollup/plugin-node-resolve'
+import type { Plugin } from 'rollup'
 import { defineConfig } from 'rollup'
 import esbuild from 'rollup-plugin-esbuild'
 
@@ -21,12 +22,12 @@ export default defineConfig({
     dir: __dirname,
     chunkFileNames: '[name].js',
   },
-  plugins: [esbuild(), nodeResolve(), dynamicImport()],
+  plugins: [esbuild(), nodeResolve(), dynamicImportViteIgnore()],
 })
 
-function dynamicImport () {
+export function dynamicImportViteIgnore (): Plugin {
   return {
     name: 'vitest-internal/dynamic-import',
-    renderDynamicImport: () => ({ left: 'import(', right: ')' }),
+    renderDynamicImport: () => ({ left: 'import(/* @vite-ignore */ ', right: ')' }),
   }
 }
