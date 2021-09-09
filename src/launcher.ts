@@ -68,6 +68,7 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
 }
 
 export async function startSpec ({ filename, reporter, connection, browser }: StartSpecArg) {
+  const page = await browser.newPage()
   const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
@@ -82,17 +83,33 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
     ;(reporter as any)[method]?.(arg)
   })
 
-  const { getResults } = reporter
+  const resultsPromise = reporter.getResults()
+  let done = false
+
+  const closePromise: typeof resultsPromise = new Promise((resolve, reject) => {
+    const onClose = () => {
+      if (!done) {
+        reject(new Error(message('Browser was closed before the spec was completed')))
+      }
+    }
+
+    page.on('close', onClose)
+    browser.on('close', onClose)
+    resultsPromise.then(resolve)
+  })
 
   reporter.getResults = () =>
-    getResults.apply(reporter).then(async (results) => {
-      ws.close()
-      // TODO
-      // await getCoverage(page)
-      return results
-    })
+    Promise.race([
+      closePromise.then(() => resultsPromise),
+      resultsPromise.then(async (results) => {
+        done = true
+        ws.close()
+        // TODO
+        // await getCoverage(page)
+        return results
+      }),
+    ])
 
-  const page = await browser.newPage()
   await page.goto(url.href)
   await page.coverage.startJSCoverage({ resetOnNavigation: false })
 

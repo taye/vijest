@@ -26,6 +26,7 @@ const config =
       server: isDev
         ? undefined
         : {
+            // TODO: check if 'ssr' and comply
             middlewareMode: 'html',
             fs: { allow: [rootDir, process.cwd()] },
             open: false,

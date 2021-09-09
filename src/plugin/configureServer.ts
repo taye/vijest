@@ -23,7 +23,7 @@ const configureServer =
       const urlMatch = req.url!.match(URL_RE)
       const [url, subpath] = urlMatch || []
 
-      if (!url || (subpath !== 'jasmine' && subpath !== 'spec')) return next()
+      if (subpath !== 'jasmine' && subpath !== 'spec') return next()
 
       const html = await viteServer.transformIndexHtml(url, template)
 
