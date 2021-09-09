@@ -4,7 +4,7 @@
   "license": "Parity-7.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -b && NODE_ENV=production yarn build:rollup",
+    "build": "tsc -b && vite build && NODE_ENV=production yarn build:rollup",
     "dev": "yarn build:rollup --watch | vite build --mode=development --watch",
     "build:rollup": "rollup -c rollup.config.ts --configPlugin rollup-plugin-esbuild ",
     "prepare": "husky install"

@@ -25,6 +25,9 @@ CONSOLE_METHODS.forEach((type) => {
   console[type] = (...args) => {
     original(...(args as any))
 
+    // TODO: remove @vite/client script or prevent websocket connection
+    if (/\[vite\]/.test(args[0])) return
+
     if (type === 'table') type = 'log'
 
     const highlight = !!supportsColor.stdout

@@ -43,7 +43,7 @@ export interface Internals {
 
 export default function vitest (options: InternalOptions = {}): VitestPlugin {
   const isDev = !!options[INTERNAL]
-  const rootDir = isDev ? resolve(__dirname, '..') : __dirname
+  const rootDir = isDev ? resolve(__dirname, '..', '..') : __dirname
 
   const manifestPath = resolve(rootDir, 'dist', 'manifest.json')
   const manifest = isDev ? null : JSON.parse(readFileSync(manifestPath).toString())
@@ -98,16 +98,6 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
 
     configResolved (config) {
       internals.config = config
-    },
-
-    async load (id) {
-      if (/supports-color/.test(id)) {
-        const { default: supportsColor } = await import(/* @vite-ignore */ 'supports-color')
-
-        return { code: `export default ${JSON.stringify(supportsColor)}`, map: null }
-      }
-
-      return null
     },
 
     transformIndexHtml: transformIndexHtml(internals),

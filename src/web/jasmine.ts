@@ -5,7 +5,10 @@ import * as jestMock from 'jest-mock'
 
 import { HOST_BASE_PATH } from '../constants'
 
+import patchStackTrace from './patches/StackTrace'
 import reporter from './remoteReporter'
+
+patchStackTrace(jasmineRequire)
 
 export const jasmine = jasmineRequire.core(jasmineRequire)
 export const env = jasmine.getEnv()

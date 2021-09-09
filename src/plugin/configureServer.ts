@@ -11,7 +11,7 @@ import type { Internals } from '.'
 const configureServer =
   (internals: Internals): Plugin['configureServer'] =>
   async (viteServer) => {
-    const { isDev, rootDir, hooks, wss } = internals
+    const { isDev, rootDir, wss } = internals
 
     const template = await fs.readFile(resolve(rootDir, 'src', 'web', 'index.html')).then((b) => b.toString())
 
@@ -44,6 +44,10 @@ const configureServer =
 
           // @ts-expect-error
           await hook?.[method]?.(arg)
+        }
+
+        if (method === 'console') {
+          console.log(method, ...arg.args)
         }
 
         const message = JSON.stringify({ method, arg })

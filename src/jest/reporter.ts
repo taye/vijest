@@ -170,8 +170,6 @@ export class Reporter implements CustomReporter {
   }
 
   console: CustomReporter['console'] = ({ type, args }) => {
-    // TODO: remove @vite/client script or prevent websocket connection
-    if (/\[vite\]/.test(args[0])) return
-    this._environment.global.console[type](...args)
+    this._environment.global?.console[type](...args)
   }
 }
