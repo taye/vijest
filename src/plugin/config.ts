@@ -1,4 +1,5 @@
 import assert from 'assert'
+import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { resolve } from 'path'
 
@@ -51,19 +52,30 @@ const config =
 
 export default config
 
-async function createStubs ({ rootDir }: Pick<Internals, 'rootDir'>) {
+async function createStubs ({ rootDir, isDev }: Pick<Internals, 'rootDir' | 'isDev'>) {
   // TODO: distinct file for each instance
   const empty = resolve(rootDir, 'stub.js')
   const supportsColor = resolve(rootDir, 'supports-color.stub.js')
 
-  const sc = await import('supports-color')
+  if (!isDev && !existsBoolean(empty) && !existsBoolean(supportsColor)) {
+    console.log('WOWWOWOWOWOWOW')
+    const sc = await import('supports-color')
 
-  await Promise.all([
-    writeFile(empty, 'export default {}'),
-    writeFile(supportsColor, `export default ${JSON.stringify(sc.default)};${exportProps(sc.default)}`),
-  ])
+    await Promise.all([
+      writeFile(empty, 'export default {}'),
+      writeFile(supportsColor, `export default ${JSON.stringify(sc.default)};${exportProps(sc.default)}`),
+    ])
+  }
 
   return { empty, supportsColor }
+}
+
+function existsBoolean (path: string) {
+  try {
+    return existsSync(path)
+  } catch {
+    return false
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
