@@ -16,8 +16,18 @@ export default defineConfig({
       input: {
         jasmine: resolve(__dirname, 'src/web/jasmine.ts'),
         spec: resolve(__dirname, 'src/web/spec.ts'),
+        'jest-snapshot': resolve(__dirname, 'src/web/jest-snapshot/index.ts'),
       },
-      external: ['chalk', 'expect', 'jest-environment-node', 'jest-mock', 'supports-color'],
+      external: [
+        'chalk',
+        'expect',
+        'jest-format',
+        'jest-environment-node',
+        'jest-mock',
+        'jest-snapshot',
+        'jest-util',
+        'supports-color',
+      ],
       output: {
         format: 'es',
         sourcemap: !isProd,

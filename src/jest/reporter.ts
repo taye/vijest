@@ -1,14 +1,11 @@
-/**
- * Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { existsSync } from 'fs'
 
 import type { AssertionResult, TestResult } from '@jest/test-result'
 import { createEmptyTestResult } from '@jest/test-result'
 import type { Config } from '@jest/types'
 import { formatResultsErrors } from 'jest-message-util'
+import type { SnapshotStateType } from 'jest-snapshot'
 
 import type { CONSOLE_METHODS } from '../constants'
 
@@ -24,44 +21,52 @@ export type CustomReporter = {
   suiteDone: (arg: any) => void
   suiteStarted: (arg: any) => void
   console?: (arg: { type: ArrayElementType<typeof CONSOLE_METHODS>; args: string[] }) => void
+  snapshot?: (arg: { method: string; args?: unknown[] }) => unknown
+  fs?: (arg: { method: string; args: unknown[] }) => unknown
+
   filename?: string
 }
 
 type Microseconds = number
 
 export class Reporter implements CustomReporter {
-  private _testResults: Array<AssertionResult>
+  private _testResults: Array<AssertionResult> = []
   private _globalConfig: Config.GlobalConfig
   private _config: Config.ProjectConfig
-  private _currentSuites: Array<string>
-  private _resolve: any
+  private _currentSuites: Array<string> = []
+  private _resolve!: (r: TestResult) => void
   private _resultsPromise: Promise<TestResult>
-  private _startTimes: Map<string, Microseconds>
+  private _startTimes = new Map<string, Microseconds>()
   private _testPath: Config.Path
 
   private _environment: Environment
   filename: string
+  snapshotState: SnapshotStateType
 
-  constructor (
-    globalConfig: Config.GlobalConfig,
-    config: Config.ProjectConfig,
-    testPath: Config.Path,
-    environment: Environment,
-  ) {
+  constructor ({
+    globalConfig,
+    config,
+    testPath,
+    environment,
+    snapshotState,
+  }: {
+    globalConfig: Config.GlobalConfig
+    config: Config.ProjectConfig
+    testPath: Config.Path
+    environment: Environment
+    snapshotState: SnapshotStateType
+  }) {
     this._globalConfig = globalConfig
     this._config = config
     this._testPath = testPath
-    this._testResults = []
-    this._currentSuites = []
-    this._resolve = null
     this._resultsPromise = new Promise((resolve) => (this._resolve = resolve))
-    this._startTimes = new Map()
 
     this._environment = environment
     this.filename = testPath
+    this.snapshotState = snapshotState
   }
 
-  jasmineStarted (_runDetails: any): void {}
+  jasmineStarted () {}
 
   specStarted (spec: any): void {
     this._startTimes.set(spec.id, Date.now())
@@ -75,11 +80,11 @@ export class Reporter implements CustomReporter {
     this._currentSuites.push(suite.description)
   }
 
-  suiteDone (_result: any): void {
+  suiteDone (): void {
     this._currentSuites.pop()
   }
 
-  jasmineDone (_runDetails: any): void {
+  jasmineDone (): void {
     let numFailingTests = 0
     let numPassingTests = 0
     let numPendingTests = 0
@@ -97,26 +102,18 @@ export class Reporter implements CustomReporter {
       }
     })
 
-    const testResult = {
+    const testResult: TestResult = {
       ...createEmptyTestResult(),
-      console: null,
       failureMessage: formatResultsErrors(testResults, this._config, this._globalConfig, this._testPath),
       numFailingTests,
       numPassingTests,
       numPendingTests,
       numTodoTests,
-      snapshot: {
-        added: 0,
-        fileDeleted: false,
-        matched: 0,
-        unchecked: 0,
-        unmatched: 0,
-        updated: 0,
-      },
       testFilePath: this._testPath,
       testResults,
     }
 
+    this.addSnapshotData(testResult)
     this._resolve(testResult)
   }
 
@@ -170,6 +167,56 @@ export class Reporter implements CustomReporter {
   }
 
   console: CustomReporter['console'] = ({ type, args }) => {
-    this._environment.global?.console[type](...args)
+    this._environment.global?.console[type](...args.map((a) => a.toString()))
+  }
+
+  fs: CustomReporter['fs'] = ({ method, args }) => {
+    if (method === 'existsSync') {
+      const path = args[0] as string
+      if (!path.startsWith(process.cwd())) return
+
+      return existsSync(path)
+    }
+
+    return undefined
+  }
+
+  snapshot: CustomReporter['snapshot'] = ({ method, args }) => {
+    console.log(method, args)
+
+    if (method === 'init') {
+      return this.snapshotState
+    }
+
+    return undefined
+  }
+
+  addSnapshotData (results: TestResult) {
+    const { snapshotState } = this
+
+    results.testResults.forEach(({ fullName, status }: AssertionResult) => {
+      if (status === 'pending' || status === 'failed') {
+        // if test is skipped or failed, we don't want to mark
+        // its snapshots as obsolete.
+        snapshotState.markSnapshotsAsCheckedForTest(fullName)
+      }
+    })
+
+    const uncheckedCount = snapshotState.getUncheckedCount()
+    const uncheckedKeys = snapshotState.getUncheckedKeys()
+
+    if (uncheckedCount) {
+      snapshotState.removeUncheckedKeys()
+    }
+
+    const status = snapshotState.save()
+    results.snapshot.fileDeleted = status.deleted
+    results.snapshot.added = snapshotState.added
+    results.snapshot.matched = snapshotState.matched
+    results.snapshot.unmatched = snapshotState.unmatched
+    results.snapshot.updated = snapshotState.updated
+    results.snapshot.unchecked = !status.deleted ? uncheckedCount : 0
+    // Copy the array to prevent memory leaks
+    results.snapshot.uncheckedKeys = Array.from(uncheckedKeys)
   }
 }

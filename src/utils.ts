@@ -38,23 +38,13 @@ export function streamPromise (stream: Readable) {
   })
 }
 
-export async function getSpecs ({
-  filenames,
-  server,
-}: {
-  filenames: string | string[]
-  server: ViteDevServer
-}) {
-  filenames = Array.isArray(filenames) ? filenames : [filenames]
+export async function getSpec ({ filename, server }: { filename: string; server: ViteDevServer }) {
+  const spec = {
+    filename,
+    url: await resolveToUrl({ server, filename: filename }),
+  }
 
-  const specs = await Promise.all(
-    filenames.map(async (filename) => ({
-      filename,
-      url: await resolveToUrl({ server, filename: filename }),
-    })),
-  )
-
-  return `window.global = window; window.__specs = ${JSON.stringify(specs)}`
+  return `window.global = window; window.__spec = ${JSON.stringify(spec)}`
 }
 
 export async function resolveToUrl ({ server, filename }: { server: ViteDevServer; filename: string }) {

@@ -1,9 +1,11 @@
+import assert from 'assert'
 import fs from 'fs/promises'
 import { resolve } from 'path'
 
 import type { Plugin } from 'vite'
+import type WebSocket from 'ws'
 
-import { HOST_BASE_PATH, URL_RE } from '../constants'
+import { HOST_BASE_PATH, REPORTER_QUESTIONS, URL_RE } from '../constants'
 import { streamPromise } from '../utils'
 
 import type { Internals } from '.'
@@ -16,6 +18,7 @@ const configureServer =
     const template = await fs.readFile(resolve(rootDir, 'src', 'web', 'index.html')).then((b) => b.toString())
 
     const app = isDev ? viteServer.middlewares : internals.app
+    const wsClients = new Map<string, WebSocket & { filename?: string }>()
 
     app.use(async (req, res, next) => {
       if (req.method !== 'GET') return next()
@@ -38,22 +41,26 @@ const configureServer =
       try {
         const body = await streamPromise(req)
         const arg = JSON.parse(body.toString() || '{}')
-
-        for (const hook of [...internals.hooks]) {
-          if (hook.filename && hook.filename !== arg.filename) continue
-
-          // @ts-expect-error
-          await hook?.[method]?.(arg)
-        }
-
         const message = JSON.stringify({ method, arg })
 
-        // send event to every ws client
-        for (const client of internals.wss.clients) {
-          await client.send(message)
-        }
+        const client = wsClients.get(arg.filename)
 
-        return res.end('{}')
+        assert(client)
+
+        if (REPORTER_QUESTIONS.has(method)) {
+          const response = await Promise.race<any>([
+            new Promise((resolve) => {
+              client.once('message', resolve)
+              client.send(message)
+            }),
+            new Promise((resolve) => setTimeout(resolve, 200)),
+          ])
+
+          return res.end(response)
+        } else {
+          client.send(message)
+          return res.end('null')
+        }
       } catch (error) {
         console.error(error)
         res.end(400)
@@ -73,6 +80,13 @@ const configureServer =
 
       httpServer = app.listen(port as number, hostname)
     }
+
+    wss.on('connection', (ws: WebSocket & { filename?: string }) => {
+      ws.once('message', (filenameMessage) => {
+        const filename = (ws.filename = filenameMessage.toString())
+        wsClients.set(filename, ws)
+      })
+    })
 
     Object.assign(internals, { httpServer, wss, viteServer })
   }

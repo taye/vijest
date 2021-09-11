@@ -1,6 +1,8 @@
 import type { TestResult } from '@jest/test-result'
 import type { Config } from '@jest/types'
 import type Runtime from 'jest-runtime'
+import { buildSnapshotResolver } from 'jest-snapshot'
+import { SnapshotState } from 'jest-snapshot'
 
 import { INTERNAL } from '../constants'
 import { connectToLauncher } from '../launcher'
@@ -22,7 +24,19 @@ async function runner (
     return defaultRunner(globalConfig, config, environment, runtime, testPath)
   }
 
-  const reporter = new Reporter(globalConfig, config, testPath, environment)
+  const { expand, updateSnapshot } = globalConfig
+  const { prettierPath, snapshotFormat } = config
+  const localRequire: Runtime['requireModule'] = (...args) => runtime.requireModule(...args)
+  const snapshotResolver = await buildSnapshotResolver(config, localRequire)
+  const snapshotPath = snapshotResolver.resolveSnapshotPath(testPath)
+  const snapshotState = new SnapshotState(snapshotPath, {
+    expand,
+    prettierPath,
+    snapshotFormat,
+    updateSnapshot,
+  })
+
+  const reporter = new Reporter({ globalConfig, config, testPath, environment, snapshotState })
   const { startSpec } = await connectToLauncher()
   const { page } = await startSpec({ filename: testPath, reporter })
 

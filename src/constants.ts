@@ -19,4 +19,6 @@ export const CONSOLE_METHODS = [
   'dirxml',
 ] as const
 
-export const STUBBED_WEB_DEPS = new Set(['graceful-fs'])
+export const STUBBED_WEB_DEPS = new Set([])
+
+export const REPORTER_QUESTIONS = new Set(['fs', 'snapshot'])

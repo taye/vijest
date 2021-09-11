@@ -11,7 +11,7 @@ import WebSocket from 'ws'
 
 import type { VitestOptions } from '../index.d'
 
-import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
+import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME, REPORTER_QUESTIONS } from './constants'
 import type { Reporter } from './jest/reporter'
 import vitest from './plugin'
 import { addressToUrl, message } from './utils'
@@ -76,11 +76,15 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
 
   const ws = new WebSocket(connection.wsUrl)
 
-  ws.on('message', (message) => {
-    const { method, arg } = JSON.parse(message.toString())
+  ws.on('open', () => ws.send(filename))
 
-    if (arg.filename !== filename) return
-    ;(reporter as any)[method]?.(arg)
+  ws.on('message', async (message) => {
+    const { method, arg } = JSON.parse(message.toString())
+    const res = (reporter as any)[method]?.(arg)
+
+    if (REPORTER_QUESTIONS.has(method)) {
+      ws.send(JSON.stringify((await res) || null))
+    }
   })
 
   const resultsPromise = reporter.getResults()

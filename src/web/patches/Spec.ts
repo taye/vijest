@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Config } from '@jest/types'
 import { extractExpectedAssertionsErrors, getState, setState } from 'expect'
@@ -92,37 +85,3 @@ const patchSpec = (jasmineRequire: any) => {
 }
 
 export default patchSpec
-
-/*
-async ({
-  config,
-  globalConfig,
-  localRequire,
-  testPath,
-}: SetupOptions): Promise<SnapshotStateType> => {
-  // Jest tests snapshotSerializers in order preceding built-in serializers.
-  // Therefore, add in reverse because the last added is the first tested.
-  config.snapshotSerializers
-    .concat()
-    .reverse()
-    .forEach(path => {
-      addSerializer(localRequire(path));
-    });
-
-  patchSpec();
-  const {expand, updateSnapshot} = globalConfig;
-  const {prettierPath, snapshotFormat} = config;
-  const snapshotResolver = await buildSnapshotResolver(config, localRequire);
-  const snapshotPath = snapshotResolver.resolveSnapshotPath(testPath);
-  const snapshotState = new SnapshotState(snapshotPath, {
-    expand,
-    prettierPath,
-    snapshotFormat,
-    updateSnapshot,
-  });
-  // @ts-expect-error: snapshotState is a jest extension of `expect`
-  setState({snapshotState, testPath});
-  // Return it back to the outer scope (test runner outside the VM).
-  return snapshotState;
-};
-*/

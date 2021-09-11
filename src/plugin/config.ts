@@ -1,7 +1,7 @@
 import assert from 'assert'
 import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
 
 import type { Plugin } from 'vite'
 
@@ -10,7 +10,7 @@ import { INTERNAL, STUBBED_WEB_DEPS } from '../constants'
 import type { Internals, VitestPlugin } from '.'
 
 const config =
-  ({ isDev, rootDir }: Internals): Plugin['config'] =>
+  ({ isDev, rootDir, resolveWeb }: Internals): Plugin['config'] =>
   async (config) => {
     const plugins = [...(config.plugins || [])] as VitestPlugin[]
     const pluginIndex = plugins.findIndex((p) => p[INTERNAL])!
@@ -35,14 +35,19 @@ const config =
           },
       resolve: {
         alias: {
+          path: 'path-browserify',
           ...Object.fromEntries([...STUBBED_WEB_DEPS].map((id) => [id, stubs.empty])),
+          ...(isDev ? { 'graceful-fs': resolve(rootDir, 'src', 'web', 'remoteFs.ts') } : {}),
           'supports-color': stubs.supportsColor,
+          'jest-util': stubs.jestUtil,
+          'jest-snapshot': resolve(resolveWeb('jest-snapshot/index.ts')),
         },
       },
       define: {
         'process.stderr': '""',
         'process.stdin': '""',
         'process.stdout': '""',
+        'process.platform': '""',
       },
       optimizeDeps: {
         exclude: [...STUBBED_WEB_DEPS, 'supports-color'],
@@ -52,24 +57,42 @@ const config =
 
 export default config
 
-async function createStubs ({ rootDir, isDev }: Pick<Internals, 'rootDir' | 'isDev'>) {
+async function createStubs ({ rootDir }: Pick<Internals, 'rootDir'>) {
   // TODO: distinct file for each instance
-  const empty = resolve(rootDir, 'stub.js')
-  const supportsColor = resolve(rootDir, 'supports-color.stub.js')
+  const empty = resolve(rootDir, '_empty.js')
+  const supportsColor = resolve(rootDir, '_supports-color.stub.js')
+  const jestUtil = resolve(rootDir, '_jest-util.js')
+  const ju = dirname(require.resolve('jest-util'))
 
-  if (!isDev && !existsBoolean(empty) && !existsBoolean(supportsColor)) {
-    const sc = await import('supports-color')
+  const sc = await import('supports-color')
 
-    await Promise.all([
-      writeFile(empty, 'export default {}'),
+  await Promise.all([
+    exists(empty) || writeFile(empty, 'export default {}'),
+    exists(supportsColor) ||
       writeFile(supportsColor, `export default ${JSON.stringify(sc.default)};${exportProps(sc.default)}`),
-    ])
-  }
+    exists(jestUtil) ||
+      writeFile(
+        jestUtil,
+        `
+export {default as createDirectory} from '${ju}/createDirectory';
+export {default as isInteractive} from '${ju}/isInteractive';
+export {default as isPromise} from '${ju}/isPromise';
+export {default as deepCyclicCopy} from '${ju}/deepCyclicCopy';
+export {default as convertDescriptorToString} from '${ju}/convertDescriptorToString';
+export * as specialChars from '${ju}/specialChars';
+export {default as replacePathSepForGlob} from '${ju}/replacePathSepForGlob';
+export {default as globsToMatcher} from '${ju}/globsToMatcher';
+export {default as pluralize} from '${ju}/pluralize';
+export {default as formatTime} from '${ju}/formatTime';
+export {default as tryRealpath} from '${ju}/tryRealpath';
+`,
+      ),
+  ] as Array<Promise<void>>)
 
-  return { empty, supportsColor }
+  return { empty, supportsColor, jestUtil }
 }
 
-function existsBoolean (path: string) {
+function exists (path: string) {
   try {
     return existsSync(path)
   } catch {

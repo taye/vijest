@@ -4,7 +4,7 @@ import queryString from 'query-string'
 import type { IndexHtmlTransform, Plugin } from 'vite'
 
 import { INTERNAL_SYMBOL_NAME, URL_RE } from '../constants'
-import { getDepUrls, getSpecs } from '../utils'
+import { getDepUrls, getSpec } from '../utils'
 
 import type { Internals } from '.'
 
@@ -23,18 +23,21 @@ const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHt
     const query = queryString.parse(search)
     const depUrls = await (depUrlsPromise = depUrlsPromise || getDepUrls({ server, resolveWeb }))
 
+    assert(isSpec || typeof query.spec === 'string')
+
+    const specState = { filename: query.spec }
     const tags = isJasmine
       ? [
           {
             tag: 'script',
             children: `Object.assign(window, {
                 global: window,
-                [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: { filename: ${JSON.stringify(query.spec)} }
+                [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: ${JSON.stringify(specState)}
               })`,
           },
           {
             tag: 'script',
-            children: await getSpecs({ server, filenames: query.spec || [] }),
+            children: await getSpec({ server, filename: (query.spec as string) || '' }),
           },
           { tag: 'script', attrs: { type: 'module', src: depUrls.jasmine } },
         ]

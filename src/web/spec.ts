@@ -7,7 +7,7 @@ import type { SpecProps } from './jasmine'
 
 const { parent } = window as any
 
-const { env, globals, specImports, reporter, makeJest } = parent.__specProps as SpecProps
+const { env, globals, specImport, reporter, makeJest, ready } = parent.__specProps as SpecProps
 
 Object.assign(window, globals, { parent: window, jest: makeJest(window) })
 
@@ -47,25 +47,15 @@ CONSOLE_METHODS.forEach((type) => {
 })
 
 window.addEventListener('load', async () => {
-  const errors: Error[] = []
-  const pushError = (e: Error) => errors.push(e)
+  await ready
 
-  const specs = specImports.map(
-    ({ filename, url }) => [filename, () => import(/* @vite-ignore */ url).catch(pushError)] as const,
-  )
-
-  // load tests
-  await Promise.all(
-    specs.map(([_, importer]) => {
-      return importer()
-    }),
-  )
-
-  env.execute()
-
-  if (errors.length) {
+  try {
+    await import(specImport.url)
+  } catch (error: unknown) {
     globals.test('[import specs]', () => {
-      errors.forEach(globals.fail)
+      globals.fail(error)
     })
   }
+
+  env.execute()
 })
