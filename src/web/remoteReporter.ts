@@ -16,7 +16,7 @@ const methods = [
 const { filename } = (global as any)[INTERNAL]
 
 const reporterEntries = methods.map(
-  (method) => [method, (arg: any) => post(method, { ...arg, filename })] as const,
+  (method) => [method, (arg: Record<string, unknown>) => post(method, { ...arg, filename })] as const,
 )
 const reporter = Object.fromEntries(reporterEntries) as unknown as Required<CustomReporter>
 

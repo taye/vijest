@@ -46,10 +46,6 @@ const configureServer =
           await hook?.[method]?.(arg)
         }
 
-        if (method === 'console') {
-          console.log(method, ...arg.args)
-        }
-
         const message = JSON.stringify({ method, arg })
 
         // send event to every ws client

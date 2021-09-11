@@ -58,7 +58,6 @@ async function createStubs ({ rootDir, isDev }: Pick<Internals, 'rootDir' | 'isD
   const supportsColor = resolve(rootDir, 'supports-color.stub.js')
 
   if (!isDev && !existsBoolean(empty) && !existsBoolean(supportsColor)) {
-    console.log('WOWWOWOWOWOWOW')
     const sc = await import('supports-color')
 
     await Promise.all([

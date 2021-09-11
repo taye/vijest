@@ -10,7 +10,7 @@ npm install --save-dev vitest jest
 ```js
 // jest.config.json
 {
-  "preset": "vitest",
+  "preset": "vitest"
 }
 ```
 

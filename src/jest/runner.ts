@@ -23,7 +23,7 @@ async function runner (
   }
 
   const reporter = new Reporter(globalConfig, config, testPath, environment)
-  const { startSpec, browser } = await connectToLauncher()
+  const { startSpec } = await connectToLauncher()
   const { page } = await startSpec({ filename: testPath, reporter })
 
   const results = await reporter.getResults()
