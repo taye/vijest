@@ -2,6 +2,7 @@ import assert from 'assert'
 import { readFile, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 
+import chalk from 'chalk'
 import findCacheDir from 'find-cache-dir'
 import mkdirp from 'mkdirp'
 import puppeteer from 'puppeteer'
@@ -28,6 +29,7 @@ export interface LaunchConnection {
   puppeteer: {
     browserWSEndpoint: string
     browserVersion: string
+    headless: boolean
   }
 }
 
@@ -39,16 +41,15 @@ export interface StartSpecArg {
 }
 
 export async function launch ({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
+  const fullPuppeteerOptions = {
+    ignoreHTTPSErrors: true,
+    ...puppeteerOptions,
+    args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
+  }
   const [{ server, internals, baseUrl }, browser] = await Promise.all([
     createViteServer(serverOptions),
 
-    puppeteer.launch({
-      // TODO
-      executablePath: 'chromium',
-      ignoreHTTPSErrors: true,
-      ...puppeteerOptions,
-      args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
-    }),
+    puppeteer.launch(fullPuppeteerOptions),
   ])
 
   const connection: LaunchConnection = {
@@ -57,6 +58,7 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
     puppeteer: {
       browserWSEndpoint: browser.wsEndpoint(),
       browserVersion: await browser.version(),
+      headless: getIsHeadless(fullPuppeteerOptions),
     },
   }
 
@@ -68,27 +70,67 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
 }
 
 export async function startSpec ({ filename, reporter, connection, browser }: StartSpecArg) {
-  const page = await browser.newPage()
   const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
   url.searchParams.set('spec', filename)
 
   const ws = new WebSocket(connection.wsUrl)
+  let cdpPromise: Promise<puppeteer.CDPSession>
 
   ws.on('open', () => ws.send(filename))
 
-  ws.on('message', async (message) => {
-    const { method, arg } = JSON.parse(message.toString())
+  ws.on('message', async (data) => {
+    const { method, arg } = JSON.parse(data.toString())
     const res = (reporter as any)[method]?.(arg)
+
+    if (method === 'debugger') {
+      if (connection.puppeteer.headless) {
+        console.warn(chalk.yellow(message("`vt.debugger()` isn't supported in headless browser mode")))
+        return
+      }
+
+      const cdp = await cdpPromise
+
+      await cdp.send('Page.bringToFront')
+      await cdp.send('Debugger.pause')
+
+      console.info(chalk.cyan(message('paused at `vt.debugger()`')))
+      console.info(chalk.cyan(message("open your test page's devtools to continue debugging")))
+
+      return
+    }
 
     if (REPORTER_QUESTIONS.has(method)) {
       ws.send(JSON.stringify(await res))
     }
   })
 
+  const page = await browser.newPage()
+
   const resultsPromise = reporter.getResults()
   let done = false
+
+  reporter.getResults = () =>
+    Promise.race([
+      closePromise.then(() => resultsPromise),
+      resultsPromise.then(async (results) => {
+        done = true
+        // TODO
+        // await getCoverage(page)
+        return results
+      }),
+    ])
+
+  if (!connection.puppeteer.headless) {
+    cdpPromise = page
+      .target()
+      .createCDPSession()
+      .then(async (cdp) => {
+        await cdp.send('Debugger.enable')
+        return cdp
+      })
+  }
 
   const closePromise: typeof resultsPromise = new Promise((resolve, reject) => {
     const onClose = () => {
@@ -102,22 +144,10 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
     resultsPromise.then(resolve)
   })
 
-  reporter.getResults = () =>
-    Promise.race([
-      closePromise.then(() => resultsPromise),
-      resultsPromise.then(async (results) => {
-        done = true
-        ws.close()
-        // TODO
-        // await getCoverage(page)
-        return results
-      }),
-    ])
-
   await page.goto(url.href)
   await page.coverage.startJSCoverage({ resetOnNavigation: false })
 
-  const close = () => Promise.all([page.close(), ws.close()])
+  const close = () => Promise.all([page.close(), ws.close(), cdpPromise?.then((cdp) => cdp.detach())])
 
   return { page, close }
 }
@@ -184,4 +214,8 @@ export async function connectToLauncher () {
     startSpec: (options: Omit<StartSpecArg, 'connection' | 'browser'>) =>
       startSpec({ ...options, connection, browser }),
   }
+}
+
+const getIsHeadless = ({ headless, devtools }: { headless?: boolean; devtools?: boolean }) => {
+  return headless === undefined ? !devtools : !!headless
 }

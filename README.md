@@ -26,6 +26,8 @@ test('login', async () => {
   await vt.byTestId('username-input').type('test@example.com')
   await vt.byTestId('password-input').type('test-password')
 
+  vt.debugger()
+
   vt.byTestId('login-button').click()
 
   expect(vt.location.path()).toBe('/dashboard')

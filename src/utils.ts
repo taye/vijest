@@ -82,3 +82,7 @@ export function addressToUrl (addressInfo: AddressInfo | null, protocol: string)
 
   return `${protocol}://${address}:${addressInfo.port}`
 }
+
+export function timeout (n: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, n))
+}

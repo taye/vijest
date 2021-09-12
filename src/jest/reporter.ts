@@ -26,6 +26,7 @@ export type CustomReporter = {
   suiteStarted: (arg: any) => void
   console?: (arg: { type: ArrayElementType<typeof CONSOLE_METHODS>; args: string[] }) => void
   init?: () => OrPromise<{ config: any; initialSnapsthots: any }>
+  debugger?: () => Promise<void>
   snapshot?: (arg: { method: string; args?: unknown[] }) => void
   fs?: (arg: { method: string; args: [string, ...unknown[]] }) => Promise<unknown>
 

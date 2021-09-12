@@ -8,6 +8,7 @@ import { INTERNAL } from '../constants'
 import { expectSnapshots } from './expectSnapshots'
 import patchSpec from './patches/Spec'
 import reporter from './remoteReporter'
+import vt from './vt'
 
 patchSpec(jasmineRequire)
 
@@ -52,6 +53,7 @@ export const globals = {
   ...jasmineInterface,
   test: it,
   expect,
+  vt,
 }
 
 const serverInjected = window[INTERNAL]

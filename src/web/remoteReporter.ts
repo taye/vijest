@@ -15,6 +15,7 @@ const methods = [
   'fs',
   'snapshot',
   'init',
+  'debugger',
 ] as const
 
 console.log((global as WebGlobal)[INTERNAL])
