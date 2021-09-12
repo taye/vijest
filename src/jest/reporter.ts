@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync } from 'fs'
+import * as fs from 'fs'
+import { normalize } from 'path'
 
 import type { AssertionResult, TestResult } from '@jest/test-result'
 import { createEmptyTestResult } from '@jest/test-result'
@@ -8,10 +9,13 @@ import { formatResultsErrors } from 'jest-message-util'
 import type { SnapshotStateType } from 'jest-snapshot'
 
 import type { CONSOLE_METHODS } from '../constants'
+import { ALLOWED_FS_METHODS } from '../constants'
+import type { SnapshotState } from '../web/jest-snapshot/State'
 
 import type Environment from './environment'
 
 type ArrayElementType<T> = T extends ArrayLike<infer P> ? P : never
+type OrPromise<T> = Promise<T> | T
 
 export type CustomReporter = {
   jasmineDone: (arg: any) => void
@@ -21,8 +25,9 @@ export type CustomReporter = {
   suiteDone: (arg: any) => void
   suiteStarted: (arg: any) => void
   console?: (arg: { type: ArrayElementType<typeof CONSOLE_METHODS>; args: string[] }) => void
-  snapshot?: (arg: { method: string; args?: unknown[] }) => unknown
-  fs?: (arg: { method: string; args: unknown[] }) => unknown
+  init?: () => OrPromise<{ config: any; initialSnapsthots: any }>
+  snapshot?: (arg: { method: string; args?: unknown[] }) => void
+  fs?: (arg: { method: string; args: [string, ...unknown[]] }) => Promise<unknown>
 
   filename?: string
 }
@@ -170,22 +175,43 @@ export class Reporter implements CustomReporter {
     this._environment.global?.console[type](...args.map((a) => a.toString()))
   }
 
-  fs: CustomReporter['fs'] = ({ method, args }) => {
-    if (method === 'existsSync') {
-      const path = args[0] as string
-      if (!path.startsWith(process.cwd())) return
+  fs: CustomReporter['fs'] = ({ method, args: [path, ...rest] }) => {
+    console.log(method, path, process.cwd())
 
-      return existsSync(path)
+    if (!normalize(path).startsWith(process.cwd())) {
+      return
     }
 
-    return undefined
+    return ALLOWED_FS_METHODS.has(method as any)
+      ? // @ts-expect-error
+        fs[method](path, ...rest)
+      : undefined
+  }
+
+  init: CustomReporter['init'] = () => {
+    const initialSnapsthots = this.snapshotState as unknown as Readonly<SnapshotState>
+
+    const res = {
+      config: this._config,
+      initialSnapsthots: {
+        ...initialSnapsthots,
+        _uncheckedKeys: [...initialSnapsthots._uncheckedKeys.values()],
+        _counters: [...initialSnapsthots._counters.entries()],
+      },
+    }
+
+    return res
   }
 
   snapshot: CustomReporter['snapshot'] = ({ method, args }) => {
-    console.log(method, args)
-
-    if (method === 'init') {
-      return this.snapshotState
+    if (method === '_addSnapshot') {
+      return (this.snapshotState as any)._addSnapshot(...args!)
+    }
+    if (method === '__update') {
+      return Object.assign(this.snapshotState, args![0])
+    }
+    if (method === 'fail') {
+      return (this.snapshotState as any).fail(...args!)
     }
 
     return undefined

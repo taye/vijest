@@ -18,5 +18,7 @@ export function postSync (path: string, body?: any) {
   xhr.open('POST', `${HOST_BASE_PATH}/${path}`, false)
   xhr.send(body && JSON.stringify(body))
 
-  return JSON.parse(xhr.responseText || 'null')
+  const { responseText } = xhr
+
+  return responseText ? JSON.parse(xhr.responseText) : undefined
 }

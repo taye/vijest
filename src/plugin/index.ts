@@ -51,7 +51,7 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
     id = 'src/web/' + id
     const chunkFile = manifest?.[id]?.file
 
-    return chunkFile ? resolve(rootDir, 'dist', chunkFile) : './' + id
+    return chunkFile ? resolve(rootDir, 'dist', chunkFile) : resolve(rootDir, id)
   }
 
   const app = connect()

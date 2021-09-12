@@ -7,8 +7,9 @@ import {
   toThrowErrorMatchingInlineSnapshot,
   toThrowErrorMatchingSnapshot,
 } from './jest-snapshot'
+import type { SnapshotInit } from './jest-snapshot/State'
 
-export async function expectSnapshots () {
+export async function expectSnapshots (initialState: SnapshotInit) {
   expect.extend({
     toMatchInlineSnapshot,
     toMatchSnapshot,
@@ -27,7 +28,7 @@ export async function expectSnapshots () {
   // const snapshotResolver = buildSnapshotResolver()
   // TODO
   // const snapshotPath = snapshotResolver.resolveSnapshotPath(testPath)
-  const snapshotState = await new SnapshotState().init()
+  const snapshotState = new SnapshotState(initialState)
 
   // @ts-expect-error: snapshotState is a jest extension of `expect`
   setState({ snapshotState })

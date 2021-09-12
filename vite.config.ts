@@ -7,9 +7,10 @@ import { INTERNAL } from './src/constants'
 import vitest from './src/plugin'
 
 const isProd = process.env.NODE_ENV === 'production'
+const isDevTest = process.env.VITEST_DEV_TEST === '1'
 
 export default defineConfig({
-  plugins: [vitest({ [INTERNAL]: true }), dynamicImportViteIgnore()],
+  plugins: [!isDevTest && vitest({ [INTERNAL]: true }), dynamicImportViteIgnore()].filter(Boolean),
   build: {
     manifest: true,
     rollupOptions: {
@@ -17,6 +18,7 @@ export default defineConfig({
         jasmine: resolve(__dirname, 'src/web/jasmine.ts'),
         spec: resolve(__dirname, 'src/web/spec.ts'),
         'jest-snapshot': resolve(__dirname, 'src/web/jest-snapshot/index.ts'),
+        'jest-util': resolve(__dirname, 'src/web/jest-util.ts'),
       },
       external: [
         'chalk',
@@ -25,7 +27,6 @@ export default defineConfig({
         'jest-environment-node',
         'jest-mock',
         'jest-snapshot',
-        'jest-util',
         'supports-color',
       ],
       output: {

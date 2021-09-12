@@ -44,7 +44,7 @@ export async function getSpec ({ filename, server }: { filename: string; server:
     url: await resolveToUrl({ server, filename: filename }),
   }
 
-  return `window.global = window; window.__spec = ${JSON.stringify(spec)}`
+  return JSON.stringify(spec)
 }
 
 export async function resolveToUrl ({ server, filename }: { server: ViteDevServer; filename: string }) {

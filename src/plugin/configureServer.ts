@@ -48,12 +48,12 @@ const configureServer =
         assert(client)
 
         if (REPORTER_QUESTIONS.has(method)) {
-          const response = await Promise.race<any>([
+          const response = await Promise.race<unknown>([
             new Promise((resolve) => {
               client.once('message', resolve)
               client.send(message)
             }),
-            new Promise((resolve) => setTimeout(resolve, 200)),
+            new Promise((resolve) => setTimeout(resolve, 500)),
           ])
 
           return res.end(response)
@@ -63,7 +63,8 @@ const configureServer =
         }
       } catch (error) {
         console.error(error)
-        res.end(400)
+        res.statusCode = 400
+        res.end()
       }
 
       res.end()

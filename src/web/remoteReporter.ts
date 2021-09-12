@@ -1,7 +1,7 @@
-import { INTERNAL } from '../constants'
+import { INTERNAL, REPORTER_QUESTIONS } from '../constants'
 import type { CustomReporter } from '../jest/reporter'
 
-import { postSync } from './utils'
+import { post, postSync } from './utils'
 
 const methods = [
   'jasmineStarted',
@@ -13,12 +13,22 @@ const methods = [
   'console',
   'fs',
   'snapshot',
+  'init',
 ] as const
 
 const { filename } = (global as any)[INTERNAL]
 
 const reporterEntries = methods.map(
-  (method) => [method, (arg: Record<string, unknown>) => postSync(method, { ...arg, filename })] as const,
+  (method) =>
+    [
+      method,
+      (arg: Record<string, unknown>) => {
+        const body = { ...arg, filename }
+        const postMethod = REPORTER_QUESTIONS.has(method) ? postSync : post
+
+        return postMethod(method, body)
+      },
+    ] as const,
 )
 const reporter = Object.fromEntries(reporterEntries) as unknown as Required<CustomReporter>
 

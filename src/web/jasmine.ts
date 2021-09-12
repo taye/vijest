@@ -3,7 +3,7 @@ import expect, { setState } from 'expect'
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import * as jestMock from 'jest-mock'
 
-import { HOST_BASE_PATH } from '../constants'
+import { HOST_BASE_PATH, INTERNAL } from '../constants'
 
 import { expectSnapshots } from './expectSnapshots'
 import patchSpec from './patches/Spec'
@@ -45,10 +45,11 @@ export const globals = {
 }
 
 const ready = (async () => {
-  const snapshotState = await expectSnapshots()
+  const { config, initialSnapsthots } = await reporter.init()
+  const snapshotState = await expectSnapshots(initialSnapsthots)
 
   // @ts-expect-error
-  setState({ snapshotState })
+  setState({ snapshotState, expand: config.expanc })
 })()
 
 const specProps = {
@@ -57,8 +58,7 @@ const specProps = {
   reporter,
   jasmine,
   jasmineRequire,
-  // @ts-expect-error
-  specImport: window.__spec as { filename: string; url: string },
+  specImport: (window as any)[INTERNAL] as { filename: string; url: string },
   makeJest: (window: Window) => makeJest(window),
   ready,
 } as const

@@ -8,29 +8,27 @@ import * as fs from '../remoteFs'
 import reporter from '../remoteReporter'
 
 import type { InlineSnapshot } from './InlineSnapshots'
-import { saveInlineSnapshots } from './InlineSnapshots'
 import {
   addExtraLineBreaks,
-  keyToTestName,
   removeExtraLineBreaks,
   removeLinesBeforeExternalMatcherTrap,
-  saveSnapshotFile,
   serialize,
   testNameToKey,
 } from './utils'
 
+export type SnapshotInit = Partial<SnapshotState> & {
+  _uncheckedKeys: string[]
+  _counters: Array<[string, number]>
+}
+
 export class SnapshotState {
-  private _counters!: Map<string, number>
-  private _dirty!: boolean
-  // @ts-expect-error
-  private _index: number
+  _counters!: Map<string, number>
   private _updateSnapshot!: Config.SnapshotUpdateState
   private _snapshotData!: SnapshotData
   private _initialData!: SnapshotData
   private _snapshotPath!: Config.Path
   private _inlineSnapshots!: Array<InlineSnapshot>
-  private _uncheckedKeys!: Set<string>
-  private _prettierPath!: Config.Path
+  _uncheckedKeys!: Set<string>
   private _snapshotFormat!: PrettyFormatOptions
 
   added!: number
@@ -39,23 +37,11 @@ export class SnapshotState {
   unmatched!: number
   updated!: number
 
-  constructor () {
+  constructor (state: SnapshotInit) {
     this.clear()
-  }
-
-  async init () {
-    Object.assign(this, reporter.snapshot({ method: 'init' }))
-    this._counters = new Map()
-    this._uncheckedKeys = new Set()
-
-    return this
-  }
-
-  markSnapshotsAsCheckedForTest (testName: string): void {
-    this._uncheckedKeys.forEach((uncheckedKey) => {
-      if (keyToTestName(uncheckedKey) === testName) {
-        this._uncheckedKeys.delete(uncheckedKey)
-      }
+    Object.assign(this, state, {
+      _uncheckedKeys: new Set(state._uncheckedKeys),
+      _counters: new Map(state._counters),
     })
   }
 
@@ -64,7 +50,6 @@ export class SnapshotState {
     receivedSerialized: string,
     options: { isInline: boolean; error?: Error },
   ): void {
-    this._dirty = true
     if (options.isInline) {
       const error = options.error || new Error()
       const lines = getStackTraceLines(removeLinesBeforeExternalMatcherTrap(error.stack || ''))
@@ -78,6 +63,7 @@ export class SnapshotState {
       })
     } else {
       this._snapshotData[key] = receivedSerialized
+      reporter.snapshot({ method: '_addSnapshot', args: [key, receivedSerialized, options] })
     }
   }
 
@@ -85,58 +71,18 @@ export class SnapshotState {
     this._snapshotData = this._initialData
     this._inlineSnapshots = []
     this._counters = new Map()
-    this._index = 0
     this.added = 0
     this.matched = 0
     this.unmatched = 0
     this.updated = 0
   }
 
-  save () {
-    const hasExternalSnapshots = Object.keys(this._snapshotData).length
-    const hasInlineSnapshots = this._inlineSnapshots.length
-    const isEmpty = !hasExternalSnapshots && !hasInlineSnapshots
-
-    const status = {
-      deleted: false,
-      saved: false,
-    }
-
-    if ((this._dirty || this._uncheckedKeys.size) && !isEmpty) {
-      if (hasExternalSnapshots) {
-        saveSnapshotFile(this._snapshotData, this._snapshotPath)
-      }
-      if (hasInlineSnapshots) {
-        saveInlineSnapshots(this._inlineSnapshots, this._prettierPath)
-      }
-      status.saved = true
-    } else if (!hasExternalSnapshots && fs.existsSync(this._snapshotPath)) {
-      if (this._updateSnapshot === 'all') {
-        fs.unlinkSync(this._snapshotPath)
-      }
-      status.deleted = true
-    }
-
-    return status
+  match (arg: SnapshotMatchOptions) {
+    return this._match(arg)
+    reporter.snapshot({ method: '__update', args: [{ added: this.added, matched: this.matched }] })
   }
 
-  getUncheckedCount (): number {
-    return this._uncheckedKeys.size || 0
-  }
-
-  getUncheckedKeys (): Array<string> {
-    return Array.from(this._uncheckedKeys)
-  }
-
-  removeUncheckedKeys (): void {
-    if (this._updateSnapshot === 'all' && this._uncheckedKeys.size) {
-      this._dirty = true
-      this._uncheckedKeys.forEach((key) => delete this._snapshotData[key])
-      this._uncheckedKeys.clear()
-    }
-  }
-
-  match ({ testName, received, key, inlineSnapshot, isInline, error }: SnapshotMatchOptions) {
+  _match ({ testName, received, key, inlineSnapshot, isInline, error }: SnapshotMatchOptions) {
     this._counters.set(testName, (this._counters.get(testName) || 0) + 1)
     const count = Number(this._counters.get(testName))
 
@@ -235,6 +181,9 @@ export class SnapshotState {
 
     this._uncheckedKeys.delete(key)
     this.unmatched++
+
+    reporter.snapshot({ method: 'fail', args: [testName, _received, key] })
+
     return key
   }
 }

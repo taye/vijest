@@ -83,7 +83,7 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
     const res = (reporter as any)[method]?.(arg)
 
     if (REPORTER_QUESTIONS.has(method)) {
-      ws.send(JSON.stringify((await res) || null))
+      ws.send(JSON.stringify(await res))
     }
   })
 

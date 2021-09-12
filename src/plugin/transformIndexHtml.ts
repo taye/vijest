@@ -25,19 +25,17 @@ const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHt
 
     assert(isSpec || typeof query.spec === 'string')
 
-    const specState = { filename: query.spec }
     const tags = isJasmine
       ? [
           {
             tag: 'script',
             children: `Object.assign(window, {
-                global: window,
-                [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: ${JSON.stringify(specState)}
-              })`,
-          },
-          {
-            tag: 'script',
-            children: await getSpec({ server, filename: (query.spec as string) || '' }),
+              global: window,
+              [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: ${await getSpec({
+              server,
+              filename: (query.spec as string) || '',
+            })}
+            })`,
           },
           { tag: 'script', attrs: { type: 'module', src: depUrls.jasmine } },
         ]
