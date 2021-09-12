@@ -3,7 +3,7 @@ import expect, { setState } from 'expect'
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import * as jestMock from 'jest-mock'
 
-import { HOST_BASE_PATH, INTERNAL } from '../constants'
+import { INTERNAL } from '../constants'
 
 import { expectSnapshots } from './expectSnapshots'
 import patchSpec from './patches/Spec'
@@ -14,8 +14,16 @@ patchSpec(jasmineRequire)
 export const jasmine = jasmineRequire.core(jasmineRequire)
 export const env = jasmine.getEnv()
 
-export type Globals = typeof globals
 export type SpecProps = typeof specProps
+export type WebGlobal = typeof globalThis & {
+  [INTERNAL]: {
+    ready: Promise<void>
+    resolve: () => void
+    reject: () => void
+    currentSpec: { filename: string; url: string }
+  }
+  __specProps: SpecProps
+}
 
 env.configure({
   failFast: false,
@@ -37,6 +45,8 @@ describe.only = jasmineInterface.fdescribe
 it.skip = jasmineInterface.xtest = jasmineInterface.xit
 it.only = jasmineInterface.ftest = jasmineInterface.fit
 
+const window = global as unknown as WebGlobal
+
 export const globals = {
   SharedArrayBuffer: window.SharedArrayBuffer || ArrayBuffer,
   ...jasmineInterface,
@@ -44,13 +54,15 @@ export const globals = {
   expect,
 }
 
-const ready = (async () => {
+const serverInjected = window[INTERNAL]
+
+;(async () => {
   const { config, initialSnapsthots } = await reporter.init()
   const snapshotState = await expectSnapshots(initialSnapsthots)
 
   // @ts-expect-error
   setState({ snapshotState, expand: config.expanc })
-})()
+})().then(serverInjected.resolve, serverInjected.reject)
 
 const specProps = {
   env,
@@ -58,19 +70,10 @@ const specProps = {
   reporter,
   jasmine,
   jasmineRequire,
-  specImport: (window as any)[INTERNAL] as { filename: string; url: string },
   makeJest: (window: Window) => makeJest(window),
-  ready,
 } as const
 
-// @ts-expect-error
 window.__specProps = specProps
-
-window.addEventListener('load', () => {
-  const specFrame = document.body.appendChild(document.createElement('iframe'))
-
-  specFrame.src = HOST_BASE_PATH + '/spec'
-})
 
 function makeJest (window: Window) {
   // @ts-expect-error

@@ -38,7 +38,7 @@ export function streamPromise (stream: Readable) {
   })
 }
 
-export async function getSpec ({ filename, server }: { filename: string; server: ViteDevServer }) {
+export async function getSpecJson ({ filename, server }: { filename: string; server: ViteDevServer }) {
   const spec = {
     filename,
     url: await resolveToUrl({ server, filename: filename }),

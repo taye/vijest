@@ -3,8 +3,8 @@ import assert from 'assert'
 import queryString from 'query-string'
 import type { IndexHtmlTransform, Plugin } from 'vite'
 
-import { INTERNAL_SYMBOL_NAME, URL_RE } from '../constants'
-import { getDepUrls, getSpec } from '../utils'
+import { HOST_BASE_PATH, INTERNAL_SYMBOL_NAME, URL_RE } from '../constants'
+import { getDepUrls, getSpecJson } from '../utils'
 
 import type { Internals } from '.'
 
@@ -29,15 +29,20 @@ const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHt
       ? [
           {
             tag: 'script',
-            children: `Object.assign(window, {
-              global: window,
-              [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: ${await getSpec({
-              server,
-              filename: (query.spec as string) || '',
-            })}
-            })`,
+            children: `(() => {
+              let resolve, reject
+              const ready = new Promise((res, rej) => { resolve = res; reject = rej })
+              Object.assign(window, {
+                global: window,
+                [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: {
+                  currentSpec: ${await getSpecJson({ server, filename: (query.spec as string) || '' })},
+                  ready, resolve, reject,
+                }
+              })
+            })()`,
           },
           { tag: 'script', attrs: { type: 'module', src: depUrls.jasmine } },
+          { tag: 'iframe', attrs: { src: HOST_BASE_PATH + '/spec' }, injectTo: 'body' } as const,
         ]
       : [{ tag: 'script', attrs: { type: 'module', src: depUrls.spec } }]
 

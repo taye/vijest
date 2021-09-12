@@ -1,6 +1,7 @@
 import { INTERNAL, REPORTER_QUESTIONS } from '../constants'
 import type { CustomReporter } from '../jest/reporter'
 
+import type { WebGlobal } from './jasmine'
 import { post, postSync } from './utils'
 
 const methods = [
@@ -16,7 +17,9 @@ const methods = [
   'init',
 ] as const
 
-const { filename } = (global as any)[INTERNAL]
+console.log((global as WebGlobal)[INTERNAL])
+
+const { filename } = (global as WebGlobal)[INTERNAL].currentSpec
 
 const reporterEntries = methods.map(
   (method) =>
