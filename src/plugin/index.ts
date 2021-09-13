@@ -5,12 +5,10 @@ import { resolve } from 'path'
 
 import connect from 'connect'
 import type { Plugin, ViteDevServer } from 'vite'
-// @ts-expect-error
-import { WebSocketServer } from 'ws'
+import type WebSocket from 'ws'
 
 import type { VitestOptions } from '../../index.d'
 import { INTERNAL, PLUGIN_NAME } from '../constants'
-import type { CustomReporter } from '../jest/reporter'
 import { addressToUrl } from '../utils'
 
 import config from './config'
@@ -30,15 +28,13 @@ export interface Internals {
   config?: ViteDevServer['config']
   app: connect.Server
   httpServer?: Server
-  wss: WebSocketServer
   viteServer?: ViteDevServer
   getBaseUrl: () => string
-  /** @deprecated */
-  hooks: Set<Partial<CustomReporter>>
   close: () => Promise<void>
   isDev: boolean
   rootDir: string
   resolveWeb: (specifier: string) => string
+  wsClients: Map<string, WebSocket & { filename?: string }>
 }
 
 export default function vitest (options: InternalOptions = {}): VitestPlugin {
@@ -55,7 +51,6 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
   }
 
   const app = connect()
-  const wss = new WebSocketServer({ port: 0 })
 
   const getBaseUrl = () => {
     const base = internals.config?.base
@@ -78,15 +73,12 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
     options,
     app,
     getBaseUrl,
-    wss,
     httpServer: undefined,
     config: undefined,
     viteServer: undefined,
-    hooks: new Set(),
+    wsClients: new Map<string, WebSocket & { filename?: string }>(),
     close: () =>
-      Promise.all([internals.httpServer?.close(), internals.wss.close(), internals.viteServer?.close()]).then(
-        () => undefined,
-      ),
+      Promise.all([internals.httpServer?.close(), internals.viteServer?.close()]).then(() => undefined),
   }
 
   return {

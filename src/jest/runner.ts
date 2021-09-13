@@ -4,8 +4,8 @@ import type Runtime from 'jest-runtime'
 import { buildSnapshotResolver } from 'jest-snapshot'
 import { SnapshotState } from 'jest-snapshot'
 
+import { connect } from '../connector'
 import { INTERNAL } from '../constants'
-import { connectToLauncher } from '../launcher'
 
 import type Environment from './environment'
 import { Reporter } from './reporter'
@@ -37,12 +37,13 @@ async function runner (
   })
 
   const reporter = new Reporter({ globalConfig, config, testPath, environment, snapshotState })
-  const { startSpec } = await connectToLauncher()
-  const { page } = await startSpec({ filename: testPath, reporter })
+  const { startSpec, disconnect } = await connect({ filename: testPath, reporter })
+
+  await startSpec()
 
   const results = await reporter.getResults()
 
-  page.close()
+  disconnect()
 
   return results
 }

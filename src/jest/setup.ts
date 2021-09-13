@@ -1,9 +1,9 @@
 import { resolve } from 'path'
 
 import type { VitestOptions } from '../..'
+import type { Launcher } from '../connector'
+import { cacheConnection, launch } from '../connector'
 import { INTERNAL, PLUGIN_NAME } from '../constants'
-import type { Launcher } from '../launcher'
-import { cacheConnection, launch } from '../launcher'
 
 const setup = async () => {
   const { launch: launchOptions, ...serverOptions } = await getConfig()

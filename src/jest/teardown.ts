@@ -1,5 +1,5 @@
+import type { Launcher } from '../connector'
 import { INTERNAL } from '../constants'
-import type { Launcher } from '../launcher'
 
 const teardown = async () => {
   const { close } = (global as unknown as { [INTERNAL]: Launcher })[INTERNAL]

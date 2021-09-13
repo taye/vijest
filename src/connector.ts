@@ -6,16 +6,16 @@ import chalk from 'chalk'
 import findCacheDir from 'find-cache-dir'
 import mkdirp from 'mkdirp'
 import puppeteer from 'puppeteer'
-import pti from 'puppeteer-to-istanbul'
 import { createServer } from 'vite'
-import WebSocket from 'ws'
+// @ts-expect-error
+import WebSocket, { WebSocketServer } from 'ws'
 
 import type { VitestOptions } from '../index.d'
 
 import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME, REPORTER_QUESTIONS } from './constants'
 import type { Reporter } from './jest/reporter'
 import vitest from './plugin'
-import { addressToUrl, message } from './utils'
+import { addressToUrl, message, timeout } from './utils'
 
 export type LaunchOptions = VitestOptions
 
@@ -26,18 +26,23 @@ export type Launcher = PromiseResolution<ReturnType<typeof launch>>
 export interface LaunchConnection {
   baseUrl: string
   wsUrl: string
-  puppeteer: {
-    browserWSEndpoint: string
-    browserVersion: string
-    headless: boolean
-  }
+  headless: boolean
 }
 
 export interface StartSpecArg {
   filename: string
   reporter: Reporter
   connection: LaunchConnection
-  browser: puppeteer.Browser
+  page: puppeteer.Page
+  ws: WebSocket
+}
+
+interface WsConnectData {
+  method: 'connect'
+  arg: {
+    browserWSEndpoint: string
+    browserVersion: string
+  }
 }
 
 export async function launch ({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
@@ -46,46 +51,71 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
     ...puppeteerOptions,
     args: ['--no-sandbox', ...(puppeteerOptions?.args || [])],
   }
-  const [{ server, internals, baseUrl }, browser] = await Promise.all([
-    createViteServer(serverOptions),
+  const { server, internals: serverInternals, baseUrl } = await createViteServer(serverOptions)
+  const { wsClients } = serverInternals
+  const wss = new WebSocketServer({ port: 0 })
 
-    puppeteer.launch(fullPuppeteerOptions),
-  ])
+  const allBrowsers = new Set<puppeteer.Browser>()
+
+  wss.on('connection', (ws: WebSocket & { filename?: string }) => {
+    ws.once('message', async (filenameMessage) => {
+      const filename = (ws.filename = filenameMessage.toString())
+
+      assert(!wsClients.get(filename))
+      wsClients.set(filename, ws)
+
+      const browser: puppeteer.Browser = await puppeteer.launch(fullPuppeteerOptions)
+      allBrowsers.add(browser)
+
+      const connectData: WsConnectData = {
+        method: 'connect',
+        arg: {
+          browserWSEndpoint: browser.wsEndpoint(),
+          browserVersion: await browser.version(),
+        },
+      }
+
+      ws.once('close', () => {
+        allBrowsers.delete(browser)
+        browser.close()
+        wsClients.delete(filename)
+      })
+
+      ws.send(JSON.stringify(connectData))
+    })
+  })
 
   const connection: LaunchConnection = {
     baseUrl,
-    wsUrl: addressToUrl(internals.wss.address(), 'ws'),
-    puppeteer: {
-      browserWSEndpoint: browser.wsEndpoint(),
-      browserVersion: await browser.version(),
-      headless: getIsHeadless(fullPuppeteerOptions),
-    },
+    wsUrl: addressToUrl(wss.address(), 'ws'),
+    headless: getIsHeadless(fullPuppeteerOptions),
   }
 
-  const close = () => {
-    return Promise.all([browser.close(), internals.close()])
+  const close = async () => {
+    await Promise.all([...[...allBrowsers].map((b) => b.close()), serverInternals.close(), wss.close()])
+    allBrowsers.clear()
+    wsClients.forEach((ws) => ws.terminate())
   }
 
-  return { connection, browser, internals, server, close }
+  return { connection, server, close }
 }
 
-export async function startSpec ({ filename, reporter, connection, browser }: StartSpecArg) {
+export async function startSpec ({ filename, reporter, connection, page, ws }: StartSpecArg) {
   const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
   url.searchParams.set('spec', filename)
 
-  const ws = new WebSocket(connection.wsUrl)
+  // eslint-disable-next-line prefer-const
   let cdpPromise: Promise<puppeteer.CDPSession>
-
-  ws.on('open', () => ws.send(filename))
 
   ws.on('message', async (data) => {
     const { method, arg } = JSON.parse(data.toString())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = (reporter as any)[method]?.(arg)
 
     if (method === 'debugger') {
-      if (connection.puppeteer.headless) {
+      if (connection.headless) {
         console.warn(chalk.yellow(message("`vt.debugger()` isn't supported in headless browser mode")))
         return
       }
@@ -106,8 +136,6 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
     }
   })
 
-  const page = await browser.newPage()
-
   const resultsPromise = reporter.getResults()
   let done = false
 
@@ -122,15 +150,16 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
       }),
     ])
 
-  if (!connection.puppeteer.headless) {
-    cdpPromise = page
-      .target()
-      .createCDPSession()
-      .then(async (cdp) => {
+  cdpPromise = page
+    .target()
+    .createCDPSession()
+    .then(async (cdp) => {
+      if (!connection.headless) {
         await cdp.send('Debugger.enable')
-        return cdp
-      })
-  }
+      }
+
+      return cdp
+    })
 
   const closePromise: typeof resultsPromise = new Promise((resolve, reject) => {
     const onClose = () => {
@@ -140,14 +169,14 @@ export async function startSpec ({ filename, reporter, connection, browser }: St
     }
 
     page.on('close', onClose)
-    browser.on('close', onClose)
+    page.browser().on('close', onClose)
     resultsPromise.then(resolve)
   })
 
   await page.goto(url.href)
   await page.coverage.startJSCoverage({ resetOnNavigation: false })
 
-  const close = () => Promise.all([page.close(), ws.close(), cdpPromise?.then((cdp) => cdp.detach())])
+  const close = () => Promise.all([page.close(), cdpPromise?.then((cdp) => cdp.detach()), ws.close()])
 
   return { page, close }
 }
@@ -171,12 +200,12 @@ async function createViteServer (options: VitestOptions) {
   return { baseUrl, internals, server }
 }
 
-// @ts-expect-error
+/*
 const getCoverage = async (page: puppeteer.Page) => {
   const jsCoverage = await page.coverage.stopJSCoverage()
-
   pti.write(jsCoverage, { includeHostname: true, storagePath: './coverage' })
 }
+*/
 
 const cacheDir = findCacheDir({ name: PLUGIN_NAME, thunk: true })
 
@@ -189,7 +218,7 @@ const getConnectionCachePath = () => {
   return cacheDir('state.json')
 }
 
-export async function cacheConnection (state: any) {
+export async function cacheConnection (state: LaunchConnection) {
   const path = getConnectionCachePath()
   const dir = dirname(path)
 
@@ -198,7 +227,7 @@ export async function cacheConnection (state: any) {
   return writeFile(path, JSON.stringify(state))
 }
 
-export async function connectToLauncher () {
+export async function connect ({ filename, reporter }: { filename: string; reporter: Reporter }) {
   let connection!: LaunchConnection
 
   try {
@@ -207,12 +236,36 @@ export async function connectToLauncher () {
 
   assert(connection, message("plugin hasn't been launched"))
 
-  const browser = await puppeteer.connect(connection.puppeteer)
+  const ws = new WebSocket(connection.wsUrl)
+
+  ws.on('open', () => ws.send(filename))
+
+  const browserConnection = await Promise.race([
+    new Promise<WsConnectData['arg']>((resolve, reject) => {
+      ws.once('message', (data) => {
+        try {
+          const { method, arg } = JSON.parse(data.toString()) as WsConnectData
+
+          assert(method === 'connect')
+          resolve(arg)
+        } catch (error) {
+          reject(error)
+        }
+      })
+    }),
+    timeout(1000).then(() => {
+      throw new Error(message(`timed out while trying to connect to the browser to run "${filename}"`))
+    }),
+  ])
+
+  const browser = await puppeteer.connect(browserConnection)
+  const page = (await browser?.pages())?.[0]
+
+  assert(browser && page)
 
   return {
-    browser,
-    startSpec: (options: Omit<StartSpecArg, 'connection' | 'browser'>) =>
-      startSpec({ ...options, connection, browser }),
+    startSpec: async () => startSpec({ connection, filename, ws, reporter, page }),
+    disconnect: () => ws.close(),
   }
 }
 

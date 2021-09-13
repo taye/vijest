@@ -3,7 +3,6 @@ import fs from 'fs/promises'
 import { resolve } from 'path'
 
 import type { Plugin } from 'vite'
-import type WebSocket from 'ws'
 
 import { HOST_BASE_PATH, REPORTER_QUESTIONS, URL_RE } from '../constants'
 import { streamPromise } from '../utils'
@@ -13,12 +12,11 @@ import type { Internals } from '.'
 const configureServer =
   (internals: Internals): Plugin['configureServer'] =>
   async (viteServer) => {
-    const { isDev, rootDir, wss } = internals
+    const { isDev, rootDir, wsClients } = internals
 
     const template = await fs.readFile(resolve(rootDir, 'src', 'web', 'index.html')).then((b) => b.toString())
 
     const app = isDev ? viteServer.middlewares : internals.app
-    const wsClients = new Map<string, WebSocket & { filename?: string }>()
 
     app.use(async (req, res, next) => {
       if (req.method !== 'GET') return next()
@@ -82,14 +80,7 @@ const configureServer =
       httpServer = app.listen(port as number, hostname)
     }
 
-    wss.on('connection', (ws: WebSocket & { filename?: string }) => {
-      ws.once('message', (filenameMessage) => {
-        const filename = (ws.filename = filenameMessage.toString())
-        wsClients.set(filename, ws)
-      })
-    })
-
-    Object.assign(internals, { httpServer, wss, viteServer })
+    Object.assign(internals, { httpServer, viteServer })
   }
 
 export default configureServer
