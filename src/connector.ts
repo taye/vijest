@@ -27,6 +27,7 @@ export interface LaunchConnection {
   baseUrl: string
   wsUrl: string
   headless: boolean
+  shareBrowserContext: boolean
 }
 
 export interface StartSpecArg {
@@ -45,7 +46,11 @@ interface WsConnectData {
   }
 }
 
-export async function launch ({ launch: puppeteerOptions, ...serverOptions }: LaunchOptions = {}) {
+export async function launch ({
+  launch: puppeteerOptions,
+  shareBrowserContext,
+  ...serverOptions
+}: LaunchOptions = {}) {
   const fullPuppeteerOptions = {
     ignoreHTTPSErrors: true,
     ...puppeteerOptions,
@@ -57,6 +62,23 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
 
   const allBrowsers = new Set<puppeteer.Browser>()
 
+  let sharedConnection: { browser: puppeteer.Browser; connectData: WsConnectData } | undefined
+
+  if (shareBrowserContext) {
+    const browser = await puppeteer.launch(fullPuppeteerOptions)
+
+    sharedConnection = {
+      browser,
+      connectData: {
+        method: 'connect',
+        arg: {
+          browserWSEndpoint: browser.wsEndpoint(),
+          browserVersion: await browser.version(),
+        },
+      },
+    }
+  }
+
   wss.on('connection', (ws: WebSocket & { filename?: string }) => {
     ws.once('message', async (filenameMessage) => {
       const filename = (ws.filename = filenameMessage.toString())
@@ -64,10 +86,11 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
       assert(!wsClients.get(filename))
       wsClients.set(filename, ws)
 
-      const browser: puppeteer.Browser = await puppeteer.launch(fullPuppeteerOptions)
+      const browser: puppeteer.Browser =
+        sharedConnection?.browser || (await puppeteer.launch(fullPuppeteerOptions))
       allBrowsers.add(browser)
 
-      const connectData: WsConnectData = {
+      const connectData: WsConnectData = sharedConnection?.connectData || {
         method: 'connect',
         arg: {
           browserWSEndpoint: browser.wsEndpoint(),
@@ -76,8 +99,11 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
       }
 
       ws.once('close', () => {
-        allBrowsers.delete(browser)
-        browser.close()
+        if (!sharedConnection) {
+          allBrowsers.delete(browser)
+          browser.close()
+        }
+
         wsClients.delete(filename)
       })
 
@@ -87,6 +113,7 @@ export async function launch ({ launch: puppeteerOptions, ...serverOptions }: La
 
   const connection: LaunchConnection = {
     baseUrl,
+    shareBrowserContext: !!shareBrowserContext,
     wsUrl: addressToUrl(wss.address(), 'ws'),
     headless: getIsHeadless(fullPuppeteerOptions),
   }
@@ -228,13 +255,13 @@ export async function cacheConnection (state: LaunchConnection) {
 }
 
 export async function connect ({ filename, reporter }: { filename: string; reporter: Reporter }) {
-  let connection!: LaunchConnection
+  let connection: LaunchConnection
 
   try {
     connection = JSON.parse((await readFile(getConnectionCachePath())).toString())
   } catch {}
 
-  assert(connection, message("plugin hasn't been launched"))
+  assert(connection!, message("server hasn't been started"))
 
   const ws = new WebSocket(connection.wsUrl)
 
@@ -259,7 +286,7 @@ export async function connect ({ filename, reporter }: { filename: string; repor
   ])
 
   const browser = await puppeteer.connect(browserConnection)
-  const page = (await browser?.pages())?.[0]
+  const page = await browser.newPage()
 
   assert(browser && page)
 

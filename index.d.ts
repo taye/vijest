@@ -1,7 +1,8 @@
 import type puppeteer from 'puppeteer'
 
 export interface VitestOptions {
-  launch?: Parameters<typeof puppeteer.launch>[0]
+  launch?: puppeteer.PuppeteerNodeLaunchOptions
+  shareBrowserContext?: boolean
 }
 
 declare global {
