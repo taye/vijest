@@ -16,21 +16,21 @@ npm install --save-dev vitest jest
 
 ```js
 // login.spec.ts
+import '@testing-library/jest-dom'
+
 test('login', async () => {
-  await vt.byTestId('login-link').click()
+  getByTestId('login-button').click()
 
-  await expect(vt.byTestId('login-button')).toBeDisabled()
+  expect(getByTestId('login-submit')).toBeDisabled()
 
-  vt.byTestId('login-button').click()
-
-  await vt.byTestId('username-input').type('test@example.com')
-  await vt.byTestId('password-input').type('test-password')
+  await vt.type('#username-input', 'test@example.com')
+  await vt.type('#password-input', 'test-password')
 
   vt.debugger()
 
-  vt.byTestId('login-button').click()
+  findByTestId('login-button').click()
 
-  expect(vt.location.path()).toBe('/dashboard')
+  await waitFor(() => expect(location.pathname).toBe('/dashboard'))
 })
 ```
 

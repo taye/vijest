@@ -16,9 +16,8 @@ const methods = [
   'snapshot',
   'init',
   'debugger',
+  'pageMethod',
 ] as const
-
-console.log((global as WebGlobal)[INTERNAL])
 
 const { id } = (global as WebGlobal)[INTERNAL]
 

@@ -4,6 +4,7 @@ import { dirname } from 'path'
 
 import chalk from 'chalk'
 import findCacheDir from 'find-cache-dir'
+import get from 'lodash/get'
 import mkdirp from 'mkdirp'
 import puppeteer from 'puppeteer'
 import { createServer } from 'vite'
@@ -12,7 +13,7 @@ import WebSocket, { WebSocketServer } from 'ws'
 
 import type { VitestOptions } from '../index.d'
 
-import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
+import { HOST_BASE_PATH, INTERNAL, PAGE_METHODS, PLUGIN_NAME } from './constants'
 import type { Reporter } from './jest/reporter'
 import vitest from './plugin'
 import { addressToUrl, message, timeout } from './utils'
@@ -140,7 +141,7 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
   ws.on('message', async (data) => {
     const { method, arg, requestId } = JSON.parse(data.toString())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = (reporter as any)[method]?.(arg)
+    let res = (reporter as any)[method]?.(arg)
 
     if (method === 'debugger') {
       if (connection.headless) {
@@ -153,6 +154,17 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
 
         console.info(chalk.cyan(message('paused at `vt.debugger()`')))
         console.info(chalk.cyan(message("open your test page's devtools to continue debugging")))
+      }
+    } else if (method === 'pageMethod') {
+      assert(PAGE_METHODS.has(arg.path.join('.')))
+      const namespacePath = arg.path.slice(0, arg.path.length - 1)
+      const methodName = arg.path[arg.path.length - 1]
+      const namespace = namespacePath.length ? get(page, namespacePath) : page.frames()[1]
+
+      try {
+        res = await namespace[methodName]?.(...arg.args)
+      } catch (error) {
+        ws.send(JSON.stringify({ requestId, statusCode: 500, response: (error as Error).message }))
       }
     }
 

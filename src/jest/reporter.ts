@@ -30,6 +30,7 @@ export type CustomReporter = {
   debugger?: () => Promise<void>
   snapshot?: (arg: { method: string; args?: unknown[] }) => void
   fs?: (arg: { method: string; args: [string, ...unknown[]] }) => Promise<unknown>
+  pageMethod?: (arg: { path: string[]; args: unknown[] }) => Promise<unknown>
 
   filename?: string
 }

@@ -29,4 +29,23 @@ export const ALLOWED_FS_METHODS = new Set([
   'readFileSync',
   'realPathSync',
   'unlinkSync',
+  'writeFileSync',
 ] as const)
+
+export const PAGE_METHODS = new Set([
+  'hover',
+  'select',
+  'tap',
+  'type',
+  'mouse.click',
+  'mouse.down',
+  'mouse.move',
+  'mouse.up',
+  'mouse.wheel',
+  'touchscreen.tap',
+  'keyboard.down',
+  'keyboard.press',
+  'keyboard.sendCharacter',
+  'keyboard.type',
+  'keyboard.up',
+])
