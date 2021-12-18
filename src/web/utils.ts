@@ -9,6 +9,10 @@ export async function post (path: string, body?: any) {
     body: JSON.stringify(body),
   })
 
+  if (!r.ok) {
+    throw new Error((await r.json()))
+  }
+
   return await r.json()
 }
 

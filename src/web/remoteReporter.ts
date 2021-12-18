@@ -1,4 +1,4 @@
-import { INTERNAL, REPORTER_QUESTIONS } from '../constants'
+import { INTERNAL, SYNC_REQUESTS } from '../constants'
 import type { CustomReporter } from '../jest/reporter'
 
 import type { WebGlobal } from './jasmine'
@@ -20,15 +20,15 @@ const methods = [
 
 console.log((global as WebGlobal)[INTERNAL])
 
-const { filename } = (global as WebGlobal)[INTERNAL].currentSpec
+const { id } = (global as WebGlobal)[INTERNAL]
 
 const reporterEntries = methods.map(
   (method) =>
     [
       method,
       (arg: Record<string, unknown>) => {
-        const body = { ...arg, filename }
-        const postMethod = REPORTER_QUESTIONS.has(method) ? postSync : post
+        const body = { ...arg, id }
+        const postMethod = SYNC_REQUESTS.has(method) ? postSync : post
 
         return postMethod(method, body)
       },

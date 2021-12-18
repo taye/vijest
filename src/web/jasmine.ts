@@ -22,6 +22,7 @@ export type WebGlobal = typeof globalThis & {
     resolve: () => void
     reject: () => void
     currentSpec: { filename: string; url: string }
+    id: string
   }
   __specProps: SpecProps
 }

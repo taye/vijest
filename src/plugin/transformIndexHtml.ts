@@ -36,6 +36,7 @@ const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHt
                 global: window,
                 [Symbol.for("${INTERNAL_SYMBOL_NAME}")]: {
                   currentSpec: ${await getSpecJson({ server, filename: (query.spec as string) || '' })},
+                  id: ${JSON.stringify(query.id)},
                   ready, resolve, reject,
                 }
               })

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import crypto from 'crypto'
 import * as fs from 'fs'
 import { normalize } from 'path'
 
@@ -48,6 +49,7 @@ export class Reporter implements CustomReporter {
   private _environment: Environment
   filename: string
   snapshotState: SnapshotStateType
+  id = crypto.randomBytes(8).toString('hex')
 
   constructor ({
     globalConfig,

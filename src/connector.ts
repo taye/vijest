@@ -12,7 +12,7 @@ import WebSocket, { WebSocketServer } from 'ws'
 
 import type { VitestOptions } from '../index.d'
 
-import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME, REPORTER_QUESTIONS } from './constants'
+import { HOST_BASE_PATH, INTERNAL, PLUGIN_NAME } from './constants'
 import type { Reporter } from './jest/reporter'
 import vitest from './plugin'
 import { addressToUrl, message, timeout } from './utils'
@@ -79,12 +79,12 @@ export async function launch ({
     }
   }
 
-  wss.on('connection', (ws: WebSocket & { filename?: string }) => {
-    ws.once('message', async (filenameMessage) => {
-      const filename = (ws.filename = filenameMessage.toString())
+  wss.on('connection', (ws: WebSocket & { id?: string }) => {
+    ws.once('message', async (initId) => {
+      const id = (ws.id = initId.toString())
 
-      assert(!wsClients.get(filename))
-      wsClients.set(filename, ws)
+      assert(!wsClients.get(id))
+      wsClients.set(id, ws)
 
       const browser: puppeteer.Browser =
         sharedConnection?.browser || (await puppeteer.launch(fullPuppeteerOptions))
@@ -104,7 +104,7 @@ export async function launch ({
           browser.close()
         }
 
-        wsClients.delete(filename)
+        wsClients.delete(id)
       })
 
       ws.send(JSON.stringify(connectData))
@@ -132,35 +132,31 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
   const url = new URL(clientUrl)
 
   url.searchParams.set('spec', filename)
+  url.searchParams.set('id', reporter.id)
 
   // eslint-disable-next-line prefer-const
   let cdpPromise: Promise<puppeteer.CDPSession>
 
   ws.on('message', async (data) => {
-    const { method, arg } = JSON.parse(data.toString())
+    const { method, arg, requestId } = JSON.parse(data.toString())
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = (reporter as any)[method]?.(arg)
 
     if (method === 'debugger') {
       if (connection.headless) {
         console.warn(chalk.yellow(message("`vt.debugger()` isn't supported in headless browser mode")))
-        return
+      } else {
+        const cdp = await cdpPromise
+
+        await cdp.send('Page.bringToFront')
+        await cdp.send('Debugger.pause')
+
+        console.info(chalk.cyan(message('paused at `vt.debugger()`')))
+        console.info(chalk.cyan(message("open your test page's devtools to continue debugging")))
       }
-
-      const cdp = await cdpPromise
-
-      await cdp.send('Page.bringToFront')
-      await cdp.send('Debugger.pause')
-
-      console.info(chalk.cyan(message('paused at `vt.debugger()`')))
-      console.info(chalk.cyan(message("open your test page's devtools to continue debugging")))
-
-      return
     }
 
-    if (REPORTER_QUESTIONS.has(method)) {
-      ws.send(JSON.stringify(await res))
-    }
+    ws.send(JSON.stringify({ requestId, response: await res }))
   })
 
   const resultsPromise = reporter.getResults()
@@ -265,7 +261,7 @@ export async function connect ({ filename, reporter }: { filename: string; repor
 
   const ws = new WebSocket(connection.wsUrl)
 
-  ws.on('open', () => ws.send(filename))
+  ws.on('open', () => ws.send(reporter.id))
 
   const browserConnection = await Promise.race([
     new Promise<WsConnectData['arg']>((resolve, reject) => {

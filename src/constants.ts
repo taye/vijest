@@ -21,7 +21,7 @@ export const CONSOLE_METHODS = [
 
 export const STUBBED_WEB_DEPS = new Set([])
 
-export const REPORTER_QUESTIONS = new Set(['fs', 'init', 'debugger'])
+export const SYNC_REQUESTS = new Set(['fs', 'init', 'debugger'])
 
 export const ALLOWED_FS_METHODS = new Set([
   'existsSync',
