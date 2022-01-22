@@ -35,7 +35,7 @@ export default defineConfig({
       },
       plugins: [dynamicImportViteIgnore()],
     },
-    minify: isProd,
+    minify: false,
     terserOptions: {
       format: {
         comments: /@vite/,

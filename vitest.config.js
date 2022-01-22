@@ -4,4 +4,5 @@ module.exports = {
     slowMo: 0,
     executablePath: 'chromium',
   },
+  shareBrowserContext: true,
 }
