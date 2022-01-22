@@ -33,6 +33,7 @@ const config =
             fs: { allow: [rootDir, process.cwd()] },
             open: false,
             hmr: false,
+            watch: { ignored: () => true },
           },
       resolve: {
         alias: {

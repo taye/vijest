@@ -37,13 +37,11 @@ async function runner (
   })
 
   const reporter = new Reporter({ globalConfig, config, testPath, environment, snapshotState })
-  const { startSpec, disconnect } = await connect({ filename: testPath, reporter })
-
-  await startSpec()
-
+  const { startSpec } = await connect({ filename: testPath, reporter })
+  const { close } = await startSpec()
   const results = await reporter.getResults()
 
-  disconnect()
+  close()
 
   return results
 }

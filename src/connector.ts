@@ -8,8 +8,8 @@ import get from 'lodash/get'
 import mkdirp from 'mkdirp'
 import puppeteer from 'puppeteer'
 import { createServer } from 'vite'
-// @ts-expect-error
-import WebSocket, { WebSocketServer } from 'ws'
+import type { AddressInfo } from 'ws'
+import WebSocket, { Server as WebSocketServer } from 'ws'
 
 import type { VitestOptions } from '../index.d'
 
@@ -68,6 +68,7 @@ export async function launch ({
   if (shareBrowserContext) {
     const browser = await puppeteer.launch(fullPuppeteerOptions)
 
+    allBrowsers.add(browser)
     sharedConnection = {
       browser,
       connectData: {
@@ -101,8 +102,8 @@ export async function launch ({
 
       ws.once('close', () => {
         if (!sharedConnection) {
-          allBrowsers.delete(browser)
           browser.close()
+          allBrowsers.delete(browser)
         }
 
         wsClients.delete(id)
@@ -115,14 +116,20 @@ export async function launch ({
   const connection: LaunchConnection = {
     baseUrl,
     shareBrowserContext: !!shareBrowserContext,
-    wsUrl: addressToUrl(wss.address(), 'ws'),
+    wsUrl: addressToUrl(wss.address() as AddressInfo, 'ws'),
     headless: getIsHeadless(fullPuppeteerOptions),
   }
 
   const close = async () => {
-    await Promise.all([...[...allBrowsers].map((b) => b.close()), serverInternals.close(), wss.close()])
+    wss.clients.forEach((ws) => ws.close())
+
+    await Promise.all([
+      new Promise((r) => wss.close(r)),
+      serverInternals.close(),
+      Promise.all([...allBrowsers].map((b) => b.close())),
+    ])
+
     allBrowsers.clear()
-    wsClients.forEach((ws) => ws.terminate())
   }
 
   return { connection, server, close }
@@ -135,8 +142,7 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
   url.searchParams.set('spec', filename)
   url.searchParams.set('id', reporter.id)
 
-  // eslint-disable-next-line prefer-const
-  let cdpPromise: Promise<puppeteer.CDPSession>
+  let cdpPromise: Promise<puppeteer.CDPSession> | undefined
 
   ws.on('message', async (data) => {
     const { method, arg, requestId } = JSON.parse(data.toString())
@@ -147,6 +153,17 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
       if (connection.headless) {
         console.warn(chalk.yellow(message("`vt.debugger()` isn't supported in headless browser mode")))
       } else {
+        cdpPromise ||= page
+          .target()
+          .createCDPSession()
+          .then(async (cdp) => {
+            if (!connection.headless) {
+              await cdp.send('Debugger.enable')
+            }
+
+            return cdp
+          })
+
         const cdp = await cdpPromise
 
         await cdp.send('Page.bringToFront')
@@ -185,17 +202,6 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
       }),
     ])
 
-  cdpPromise = page
-    .target()
-    .createCDPSession()
-    .then(async (cdp) => {
-      if (!connection.headless) {
-        await cdp.send('Debugger.enable')
-      }
-
-      return cdp
-    })
-
   const closePromise: typeof resultsPromise = new Promise((resolve, reject) => {
     const onClose = () => {
       if (!done) {
@@ -211,7 +217,8 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
   await page.goto(url.href)
   await page.coverage.startJSCoverage({ resetOnNavigation: false })
 
-  const close = () => Promise.all([page.close(), cdpPromise?.then((cdp) => cdp.detach()), ws.close()])
+  const close = () =>
+    Promise.all([Promise.resolve(cdpPromise).then((cdp) => cdp?.detach()), page.close(), ws.close()])
 
   return { page, close }
 }
@@ -275,7 +282,7 @@ export async function connect ({ filename, reporter }: { filename: string; repor
 
   ws.on('open', () => ws.send(reporter.id))
 
-  const browserConnection = await Promise.race([
+  const browserConnection = await timeout(
     new Promise<WsConnectData['arg']>((resolve, reject) => {
       ws.once('message', (data) => {
         try {
@@ -287,13 +294,12 @@ export async function connect ({ filename, reporter }: { filename: string; repor
           reject(error)
         }
       })
+      // throw new Error(message(`timed out while trying to connect to the browser to run "${filename}"`))
     }),
-    timeout(1000).then(() => {
-      throw new Error(message(`timed out while trying to connect to the browser to run "${filename}"`))
-    }),
-  ])
+    1000,
+  )
 
-  const browser = await puppeteer.connect(browserConnection)
+  const browser = await puppeteer.connect(browserConnection!)
   const page = await browser.newPage()
 
   assert(browser && page)

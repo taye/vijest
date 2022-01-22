@@ -1,5 +1,6 @@
 import assert from 'assert'
 import type { AddressInfo } from 'net'
+import timers from 'node:timers/promises'
 import { relative, sep } from 'path'
 import type { Readable } from 'stream'
 
@@ -83,6 +84,19 @@ export function addressToUrl (addressInfo: AddressInfo | null, protocol: string)
   return `${protocol}://${address}:${addressInfo.port}`
 }
 
-export function timeout (n: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, n))
+export async function timeout<T> (valuePromise: Promise<T>, n: number) {
+  let resolved = false
+  const timeoutController = new AbortController()
+  const timeoutPromise = timers
+    .setTimeout<never>(n, undefined, { ref: false, signal: timeoutController.signal })
+    .catch((error) => {
+      if (resolved) return
+      throw error
+    })
+  const value = await Promise.race([valuePromise, timeoutPromise])
+
+  resolved = true
+  timeoutController.abort()
+
+  return value
 }

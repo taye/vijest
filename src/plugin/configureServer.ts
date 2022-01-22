@@ -5,7 +5,7 @@ import { resolve } from 'path'
 import type { Plugin } from 'vite'
 
 import { HOST_BASE_PATH, URL_RE } from '../constants'
-import { streamPromise } from '../utils'
+import { streamPromise, timeout } from '../utils'
 
 import type { Internals } from '.'
 
@@ -46,7 +46,7 @@ const configureServer =
 
         assert(client)
 
-        const response = await Promise.race<unknown>([
+        const response = await timeout(
           new Promise((resolve) => {
             const onMessage = (data: Buffer) => {
               const json = JSON.parse(data.toString())
@@ -61,8 +61,8 @@ const configureServer =
             client.on('message', onMessage)
             client.send(message)
           }),
-          new Promise((resolve) => setTimeout(resolve, 5000)),
-        ])
+          3000,
+        )
         return res.end(response)
       } catch (error) {
         console.error(error)
@@ -83,6 +83,11 @@ const configureServer =
       const hostname = typeof host === 'boolean' ? (host ? '0.0.0.0' : '127.0.0.1') : host
 
       httpServer = app.listen(port as number, hostname)
+
+      httpServer.on('connection', (socket) => {
+        internals.sockets.add(socket)
+        socket.on('close', () => internals.sockets.delete(socket))
+      })
     }
 
     Object.assign(internals, { httpServer, viteServer })

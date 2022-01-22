@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import type { Server } from 'http'
-import type { AddressInfo } from 'net'
+import type { AddressInfo, Socket } from 'net'
 import { resolve } from 'path'
 
 import connect from 'connect'
@@ -34,7 +34,8 @@ export interface Internals {
   isDev: boolean
   rootDir: string
   resolveWeb: (specifier: string) => string
-  wsClients: Map<string, WebSocket & { filename?: string }>
+  wsClients: Map<string, WebSocket & { id?: string }>
+  sockets: Set<Socket>
 }
 
 export default function vitest (options: InternalOptions = {}): VitestPlugin {
@@ -66,6 +67,9 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
     return addressToUrl(address, protocol)
   }
 
+  const wsClients = new Map<string, WebSocket & { id?: string }>()
+  const sockets = new Set<Socket>()
+
   const internals: VitestPlugin[typeof INTERNAL] = {
     isDev,
     resolveWeb,
@@ -73,12 +77,22 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
     options,
     app,
     getBaseUrl,
-    httpServer: undefined,
+    wsClients,
+    sockets,
     config: undefined,
+    httpServer: undefined,
     viteServer: undefined,
-    wsClients: new Map<string, WebSocket & { filename?: string }>(),
-    close: () =>
-      Promise.all([internals.httpServer?.close(), internals.viteServer?.close()]).then(() => undefined),
+    close: async () => {
+      await Promise.all([new Promise((r) => internals.httpServer?.close(r)), internals.viteServer?.close()])
+      sockets.forEach((s) => s.destroy())
+
+      wsClients.clear()
+      // @ts-expect-error
+      internals.app = undefined
+      internals.config = undefined
+      internals.httpServer = undefined
+      internals.viteServer = undefined
+    },
   }
 
   return {

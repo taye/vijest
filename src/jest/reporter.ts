@@ -180,8 +180,6 @@ export class Reporter implements CustomReporter {
   }
 
   fs: CustomReporter['fs'] = ({ method, args: [path, ...rest] }) => {
-    console.log(method, path, process.cwd())
-
     if (!normalize(path).startsWith(process.cwd())) {
       return
     }
