@@ -1,14 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Config } from '@jest/types'
+/* slint-disable @typescript-eslint/no-explicit-any */
 import { extractExpectedAssertionsErrors, getState, setState } from 'expect'
-import type { Plugin } from 'pretty-format'
-
-export type SetupOptions = {
-  config: Config.ProjectConfig
-  globalConfig: Config.GlobalConfig
-  localRequire: (moduleName: string) => Plugin
-  testPath: Config.Path
-}
 
 // Get suppressed errors form  jest-matchers that weren't throw during
 // test execution and add them to the test result, potentially failing

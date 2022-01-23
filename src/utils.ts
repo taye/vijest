@@ -1,11 +1,17 @@
 import assert from 'assert'
 import type { AddressInfo } from 'net'
-import timers from 'node:timers/promises'
 import { relative, sep } from 'path'
 import type { Readable } from 'stream'
+import timers from 'timers/promises'
 
+import type { ShouldInstrumentOptions } from '@jest/transform'
+import { shouldInstrument } from '@jest/transform'
+import type { Config } from '@jest/types'
+import type { CoverageEntry } from 'puppeteer'
+import puppeteerToV8 from 'puppeteer-to-istanbul/lib/puppeteer-to-v8'
 import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
 
+import type { LaunchConnection } from './connector'
 import { INTERNAL, PLUGIN_NAME } from './constants'
 import type { VitestPlugin } from './plugin'
 
@@ -99,4 +105,40 @@ export async function timeout<T> (valuePromise: Promise<T>, n: number) {
   timeoutController.abort()
 
   return value
+}
+
+export async function convertCoverage ({
+  puppeteerCoverage,
+  connection,
+  coverageOptions,
+  config,
+}: {
+  puppeteerCoverage: CoverageEntry[]
+  connection: LaunchConnection
+  coverageOptions: ShouldInstrumentOptions
+  config: Config.ProjectConfig
+}) {
+  const correctedUrls = puppeteerCoverage
+    .filter(({ url }) => url.startsWith(connection.baseUrl) && shouldInstrument(url, coverageOptions, config))
+    .map((c) => {
+      // urls to absolute file paths
+      c.url = c.url.slice(connection.baseUrl.length)
+      if (!c.url.startsWith(connection.rootDir)) c.url = connection.rootDir + c.url
+      return c
+    })
+
+  return puppeteerToV8(correctedUrls).convertCoverage()
+}
+
+function ansiRegex ({ onlyFirst = false } = {}) {
+  const pattern = [
+    '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
+    '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
+  ].join('|')
+
+  return new RegExp(pattern, onlyFirst ? undefined : 'g')
+}
+
+export function stripAnsi (string: string) {
+  return string.replace(ansiRegex(), '')
 }

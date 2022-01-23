@@ -1,7 +1,10 @@
+import { Buffer } from 'buffer'
+
 import { ModernFakeTimers } from '@jest/fake-timers'
 import expect, { setState } from 'expect'
 import jasmineRequire from 'jasmine-core/lib/jasmine-core/jasmine'
 import * as jestMock from 'jest-mock'
+import sourcemapSupport from 'source-map-support'
 
 import { INTERNAL } from '../constants'
 
@@ -62,6 +65,9 @@ const serverInjected = window[INTERNAL]
 ;(async () => {
   const { config, initialSnapsthots } = await reporter.init()
   const snapshotState = await expectSnapshots(initialSnapsthots)
+
+  globalThis.Buffer = Buffer
+  sourcemapSupport.install()
 
   // @ts-expect-error
   setState({ snapshotState, expand: config.expanc })

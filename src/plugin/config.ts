@@ -25,6 +25,7 @@ const config =
 
     return {
       plugins,
+      logLevel: 'error',
       server: isDev
         ? undefined
         : {

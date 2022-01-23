@@ -37,9 +37,23 @@ async function runner (
   })
 
   const reporter = new Reporter({ globalConfig, config, testPath, environment, snapshotState })
-  const { startSpec } = await connect({ filename: testPath, reporter })
-  const { close } = await startSpec()
-  const results = await reporter.getResults()
+  const { _coverageOptions: coverageOptions } = runtime as any
+  const { startSpec } = await connect({ filename: testPath, reporter, coverageOptions, config })
+  const { close, getResults } = await startSpec()
+  const results = await getResults()
+
+  /*
+  const runtime_: any = runtime
+  runtime_.__stopCollectingV8Coverage = runtime.stopCollectingV8Coverage
+  runtime.stopCollectingV8Coverage = async () => {
+    await runtime_.__stopCollectingV8Coverage()
+
+    runtime_._v8CoverageResult = coverage
+    console.log(coverage)
+    debugger
+  }
+  runtime_.getAllV8CoverageInfoCopy
+  */
 
   close()
 

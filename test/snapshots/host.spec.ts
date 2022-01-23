@@ -1,24 +1,4 @@
-import { spawnSync } from 'child_process'
-import { resolve } from 'path'
-
-const runTest = (dir: string) => {
-  let result
-  const cwd = resolve(__dirname, '..')
-
-  expect(() => {
-    const { stdout, error } = spawnSync(
-      'jest',
-      ['--ci', '--json', '--bail=-1', '--config=jest.config.cjs', resolve(dir, 'web_spec.ts')],
-      { cwd, stdio: ['ignore', 'pipe', 'ignore'] },
-    )
-
-    if (error) throw error
-
-    result = JSON.parse(stdout.toString())
-  }).not.toThrow()
-
-  return result
-}
+import { runTest } from '../runTest'
 
 test('snapshots', () => {
   const results = runTest(__dirname)

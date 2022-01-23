@@ -2,6 +2,8 @@ import assert from 'assert'
 import { readFile, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 
+import type { ShouldInstrumentOptions } from '@jest/transform'
+import type { Config } from '@jest/types'
 import chalk from 'chalk'
 import findCacheDir from 'find-cache-dir'
 import get from 'lodash/get'
@@ -16,7 +18,7 @@ import type { VitestOptions } from '../index.d'
 import { HOST_BASE_PATH, INTERNAL, PAGE_METHODS, PLUGIN_NAME } from './constants'
 import type { Reporter } from './jest/reporter'
 import vitest from './plugin'
-import { addressToUrl, message, timeout } from './utils'
+import { addressToUrl, convertCoverage, message, timeout } from './utils'
 
 export type LaunchOptions = VitestOptions
 
@@ -25,6 +27,7 @@ type PromiseResolution<T> = T extends PromiseLike<infer U> ? U : never
 export type Launcher = PromiseResolution<ReturnType<typeof launch>>
 
 export interface LaunchConnection {
+  rootDir: string
   baseUrl: string
   wsUrl: string
   headless: boolean
@@ -114,6 +117,7 @@ export async function launch ({
   })
 
   const connection: LaunchConnection = {
+    rootDir: server.config.root,
     baseUrl,
     shareBrowserContext: !!shareBrowserContext,
     wsUrl: addressToUrl(wss.address() as AddressInfo, 'ws'),
@@ -135,7 +139,15 @@ export async function launch ({
   return { connection, server, close }
 }
 
-export async function startSpec ({ filename, reporter, connection, page, ws }: StartSpecArg) {
+export async function startSpec ({
+  filename,
+  reporter,
+  coverageOptions,
+  config,
+  connection,
+  page,
+  ws,
+}: StartSpecArg) {
   const clientUrl = new URL(`${HOST_BASE_PATH}/jasmine`, connection.baseUrl)
   const url = new URL(clientUrl)
 
@@ -188,19 +200,22 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
     ws.send(JSON.stringify({ requestId, response: await res }))
   })
 
-  const resultsPromise = reporter.getResults()
   let done = false
+  const resultsPromise = reporter.getResults().then((r) => {
+    done = true
+    return r
+  })
 
-  reporter.getResults = () =>
-    Promise.race([
-      closePromise.then(() => resultsPromise),
-      resultsPromise.then(async (results) => {
-        done = true
-        // TODO
-        // await getCoverage(page)
-        return results
-      }),
-    ])
+  const getResults = async () => {
+    const results = await Promise.race([resultsPromise, closePromise])
+
+    if (coverageOptions.collectCoverage) {
+      const puppeteerCoverage = await page.coverage.stopJSCoverage()
+      results.v8Coverage = await convertCoverage({ puppeteerCoverage, connection, coverageOptions, config })
+    }
+
+    return results
+  }
 
   const closePromise: typeof resultsPromise = new Promise((resolve, reject) => {
     const onClose = () => {
@@ -215,12 +230,15 @@ export async function startSpec ({ filename, reporter, connection, page, ws }: S
   })
 
   await page.goto(url.href)
-  await page.coverage.startJSCoverage({ resetOnNavigation: false })
+
+  if (coverageOptions.collectCoverage) {
+    await page.coverage.startJSCoverage({ resetOnNavigation: false })
+  }
 
   const close = () =>
     Promise.all([Promise.resolve(cdpPromise).then((cdp) => cdp?.detach()), page.close(), ws.close()])
 
-  return { page, close }
+  return { getResults, close }
 }
 
 async function createViteServer (options: VitestOptions) {
@@ -242,13 +260,6 @@ async function createViteServer (options: VitestOptions) {
   return { baseUrl, internals, server }
 }
 
-/*
-const getCoverage = async (page: puppeteer.Page) => {
-  const jsCoverage = await page.coverage.stopJSCoverage()
-  pti.write(jsCoverage, { includeHostname: true, storagePath: './coverage' })
-}
-*/
-
 const cacheDir = findCacheDir({ name: PLUGIN_NAME, thunk: true })
 
 const getConnectionCachePath = () => {
@@ -269,7 +280,17 @@ export async function cacheConnection (state: LaunchConnection) {
   return writeFile(path, JSON.stringify(state))
 }
 
-export async function connect ({ filename, reporter }: { filename: string; reporter: Reporter }) {
+export async function connect ({
+  filename,
+  reporter,
+  coverageOptions,
+  config,
+}: {
+  filename: string
+  reporter: Reporter
+  coverageOptions: ShouldInstrumentOptions
+  config: Config.ProjectConfig
+}) {
   let connection: LaunchConnection
 
   try {
@@ -305,7 +326,7 @@ export async function connect ({ filename, reporter }: { filename: string; repor
   assert(browser && page)
 
   return {
-    startSpec: async () => startSpec({ connection, filename, ws, reporter, page }),
+    startSpec: async () => startSpec({ connection, filename, ws, reporter, coverageOptions, config, page }),
     disconnect: () => ws.close(),
   }
 }
