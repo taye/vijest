@@ -1,0 +1,32 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`failing 1`] = `2`;
+
+exports[`failing 2`] = `
+Array [
+  1,
+]
+`;
+
+exports[`matching 1`] = `
+Object {
+  "array": Array [
+    1,
+    2,
+    3,
+  ],
+}
+`;
+
+exports[`matching 3`] = `
+Set {
+  "one",
+  "two",
+}
+`;
+
+exports[`skipped 1`] = `skipped content`;
+
+exports[`unused 1`] = `unused content`;
+
+exports[`unused 4`] = `unused content`;

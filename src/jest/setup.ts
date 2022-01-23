@@ -8,7 +8,6 @@ import { INTERNAL, PLUGIN_NAME } from '../constants'
 const setup = async ({ rootDir }: { rootDir: string }) => {
   const { launch: launchOptions, ...serverOptions } = await getConfig(rootDir)
 
-  // FIXME: testEnvironmentOptions isn't available here?!
   const launchState = await launch({
     launch: launchOptions,
     ...serverOptions,

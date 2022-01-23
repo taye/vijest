@@ -78,8 +78,13 @@ export class SnapshotState {
   }
 
   match (arg: SnapshotMatchOptions) {
-    return this._match(arg)
-    reporter.snapshot({ method: '__update', args: [{ added: this.added, matched: this.matched }] })
+    const res = this._match(arg)
+    const { added, matched, unmatched, updated } = this
+    const updateData = { added, matched, unmatched, updated, uncheckedKeys: Array.from(this._uncheckedKeys) }
+
+    reporter.snapshot({ method: '__update', args: [updateData] })
+
+    return res
   }
 
   _match ({ testName, received, key, inlineSnapshot, isInline, error }: SnapshotMatchOptions) {

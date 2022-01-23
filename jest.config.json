@@ -1,4 +1,4 @@
 {
-  "preset": "<rootDir>",
-  "testMatch": ["**/*.spec.ts"]
+  "testMatch": ["<rootDir>/test/**/*.spec.ts"],
+  "transform": { "^.+\\.tsx?$": ["esbuild-jest", { "sourcemap": true, "format": "cjs" }] }
 }

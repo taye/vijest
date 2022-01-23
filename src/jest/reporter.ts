@@ -206,14 +206,18 @@ export class Reporter implements CustomReporter {
   }
 
   snapshot: CustomReporter['snapshot'] = ({ method, args }) => {
+    const snapshotState: any = this.snapshotState
     if (method === '_addSnapshot') {
-      return (this.snapshotState as any)._addSnapshot(...args!)
+      return snapshotState._addSnapshot(...args!)
     }
     if (method === '__update') {
-      return Object.assign(this.snapshotState, args![0])
+      const { uncheckedKeys, ...others } = args![0]
+
+      snapshotState._uncheckedKeys = new Set(uncheckedKeys)
+      return Object.assign(snapshotState, others)
     }
     if (method === 'fail') {
-      return (this.snapshotState as any).fail(...args!)
+      return snapshotState.fail(...args!)
     }
 
     return undefined
