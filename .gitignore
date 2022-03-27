@@ -1,5 +1,6 @@
 /*.js
 /*.js.map
+/test/**/.tmp
 
 .DS_Store
 *.local

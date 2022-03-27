@@ -1,4 +1,5 @@
 {
   "testMatch": ["<rootDir>/test/**/*.spec.ts"],
-  "transform": { "^.+\\.tsx?$": ["esbuild-jest", { "sourcemap": true, "format": "cjs" }] }
+  "transform": { "^.+\\.tsx?$": ["esbuild-jest", { "sourcemap": true, "format": "cjs" }] },
+  "maxWorkers": 1
 }

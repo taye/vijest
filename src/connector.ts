@@ -211,7 +211,9 @@ export async function startSpec ({
 
     if (coverageOptions.collectCoverage) {
       const puppeteerCoverage = await page.coverage.stopJSCoverage()
-      results.v8Coverage = await convertCoverage({ puppeteerCoverage, connection, coverageOptions, config })
+      results.v8Coverage = (
+        await convertCoverage({ puppeteerCoverage, connection, coverageOptions, config })
+      ).map((c) => ({ result: c }))
     }
 
     return results
