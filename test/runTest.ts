@@ -1,6 +1,7 @@
 import { spawnSync } from 'child_process'
 import { join } from 'path'
 
+import type { TestResult } from '@jest/test-result'
 import { writeFileSync, existsSync, copySync, moveSync, mkdirpSync } from 'fs-extra'
 import rimraf from 'rimraf'
 
@@ -13,7 +14,7 @@ export const runTest = (specDir: string, spec: () => void | string, flags: strin
   const fixturesSourceDir = join(specDir, '__fixtures__')
   const specContents = typeof spec === 'string' ? spec : getFunctionBody(spec)
   const specDestFile = join(tmpDir, 'web_spec.ts')
-  let result
+  let result: TestResult
 
   rimraf.sync(tmpDir)
   mkdirpSync(tmpDir)

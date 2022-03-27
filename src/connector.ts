@@ -38,6 +38,8 @@ export interface StartSpecArg {
   filename: string
   reporter: Reporter
   connection: LaunchConnection
+  coverageOptions: ShouldInstrumentOptions
+  config: Config.ProjectConfig
   page: puppeteer.Page
   ws: WebSocket
 }
@@ -213,7 +215,7 @@ export async function startSpec ({
       const puppeteerCoverage = await page.coverage.stopJSCoverage()
       results.v8Coverage = (
         await convertCoverage({ puppeteerCoverage, connection, coverageOptions, config })
-      ).map((c) => ({ result: c }))
+      ).map((c: any) => ({ result: c }))
     }
 
     return results
