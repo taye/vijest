@@ -8,7 +8,7 @@ import { INTERNAL } from '../constants'
 export default class Environment {
   static __filename = __filename;
 
-  // allow distinction of vitest environment
+  // allow distinction of vijest environment
   [INTERNAL] = true
 
   global? = {} as typeof globalThis

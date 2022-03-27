@@ -7,7 +7,7 @@ import connect from 'connect'
 import type { Plugin, ViteDevServer } from 'vite'
 import type WebSocket from 'ws'
 
-import type { VitestOptions } from '../../index.d'
+import type { VijestOptions } from '../../index.d'
 import { INTERNAL, PLUGIN_NAME } from '../constants'
 import { addressToUrl } from '../utils'
 
@@ -15,16 +15,16 @@ import config from './config'
 import configureServer from './configureServer'
 import transformIndexHtml from './transformIndexHtml'
 
-interface InternalOptions extends VitestOptions {
+interface InternalOptions extends VijestOptions {
   [INTERNAL]?: boolean
 }
 
-export interface VitestPlugin extends Plugin {
+export interface VijestPlugin extends Plugin {
   [INTERNAL]: Internals
 }
 
 export interface Internals {
-  options: VitestOptions
+  options: VijestOptions
   config?: ViteDevServer['config']
   app: connect.Server
   httpServer?: Server
@@ -38,7 +38,7 @@ export interface Internals {
   sockets: Set<Socket>
 }
 
-export default function vitest (options: InternalOptions = {}): VitestPlugin {
+export default function vijest (options: InternalOptions = {}): VijestPlugin {
   const isDev = !!options[INTERNAL]
   const rootDir = isDev ? resolve(__dirname, '..', '..') : __dirname
 
@@ -70,7 +70,7 @@ export default function vitest (options: InternalOptions = {}): VitestPlugin {
   const wsClients = new Map<string, WebSocket & { id?: string }>()
   const sockets = new Set<Socket>()
 
-  const internals: VitestPlugin[typeof INTERNAL] = {
+  const internals: VijestPlugin[typeof INTERNAL] = {
     isDev,
     resolveWeb,
     rootDir,

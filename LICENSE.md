@@ -2,7 +2,7 @@
 
 Contributor: Taye Adeyemi
 
-Source Code: https://github.com/taye/vitest
+Source Code: https://github.com/taye/vijest
 
 ## Purpose
 

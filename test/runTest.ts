@@ -18,7 +18,7 @@ export const runTest = (specDir: string, spec: () => void | string, flags: strin
 
   rimraf.sync(tmpDir)
   mkdirpSync(tmpDir)
-  ;['vitest.config.js', 'jest.config.cjs'].forEach((filename) =>
+  ;['vijest.config.js', 'jest.config.cjs'].forEach((filename) =>
     copySync(...[__dirname, tmpDir].map((sourceDir) => join(sourceDir, filename))),
   )
   writeFileSync(specDestFile, specContents)

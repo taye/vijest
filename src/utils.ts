@@ -13,7 +13,7 @@ import type { ResolvedConfig, UserConfig, ViteDevServer } from 'vite'
 
 import type { LaunchConnection } from './connector'
 import { INTERNAL, PLUGIN_NAME } from './constants'
-import type { VitestPlugin } from './plugin'
+import type { VijestPlugin } from './plugin'
 
 export async function getDepUrls ({
   server,
@@ -73,7 +73,7 @@ export async function resolveToUrl ({ server, filename }: { server: ViteDevServe
 }
 
 export function findPlugin (config: UserConfig | ResolvedConfig) {
-  const plugins = (config?.plugins || []).flat() as unknown as VitestPlugin[]
+  const plugins = (config?.plugins || []).flat() as unknown as VijestPlugin[]
 
   return plugins.find((p) => p && p[INTERNAL])
 }

@@ -1,16 +1,16 @@
-# Vitest
+# Vijest
 
 A Jest test runner for modern single-page web apps built with Vite. Run your tests directly
 in a headless browser with a straight forward async API.
 
 ```shell
-npm install --save-dev vitest jest
+npm install --save-dev vijest jest
 ```
 
 ```js
 // jest.config.json
 {
-  "preset": "vitest"
+  "preset": "vijest"
 }
 ```
 

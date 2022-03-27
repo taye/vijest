@@ -27,7 +27,7 @@ export default defineConfig({
 
 export function dynamicImportViteIgnore (): Plugin {
   return {
-    name: 'vitest-internal/dynamic-import',
+    name: 'vijest-internal/dynamic-import',
     renderDynamicImport: () => ({ left: 'import(/* @vite-ignore */ ', right: ')' }),
   }
 }

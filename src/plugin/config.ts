@@ -7,12 +7,12 @@ import type { Plugin } from 'vite'
 
 import { INTERNAL, STUBBED_WEB_DEPS } from '../constants'
 
-import type { Internals, VitestPlugin } from '.'
+import type { Internals, VijestPlugin } from '.'
 
 const config =
   ({ isDev, rootDir, resolveWeb }: Internals): Plugin['config'] =>
   async (config) => {
-    const plugins = [...(config.plugins || [])] as VitestPlugin[]
+    const plugins = [...(config.plugins || [])] as VijestPlugin[]
     const pluginIndex = plugins.findIndex((p) => p[INTERNAL])!
     const pluginInstance = plugins[pluginIndex]
 

@@ -4,13 +4,13 @@ import { defineConfig } from 'vite'
 
 import { dynamicImportViteIgnore } from './rollup.config'
 import { INTERNAL } from './src/constants'
-import vitest from './src/plugin'
+import vijest from './src/plugin'
 
 const isProd = process.env.NODE_ENV === 'production'
-const isDevTest = process.env.VITEST_DEV_TEST === '1'
+const isDevTest = process.env.VIJEST_DEV_TEST === '1'
 
 export default defineConfig({
-  plugins: [!isDevTest && vitest({ [INTERNAL]: true }), dynamicImportViteIgnore()].filter(Boolean),
+  plugins: [!isDevTest && vijest({ [INTERNAL]: true }), dynamicImportViteIgnore()].filter(Boolean),
   build: {
     manifest: true,
     rollupOptions: {

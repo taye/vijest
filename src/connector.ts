@@ -13,14 +13,14 @@ import { createServer } from 'vite'
 import type { AddressInfo } from 'ws'
 import WebSocket, { Server as WebSocketServer } from 'ws'
 
-import type { VitestOptions } from '../index.d'
+import type { VijestOptions } from '../index.d'
 
 import { HOST_BASE_PATH, INTERNAL, PAGE_METHODS, PLUGIN_NAME } from './constants'
 import type { Reporter } from './jest/reporter'
-import vitest from './plugin'
+import vijest from './plugin'
 import { addressToUrl, convertCoverage, message, timeout } from './utils'
 
-export type LaunchOptions = VitestOptions
+export type LaunchOptions = VijestOptions
 
 type PromiseResolution<T> = T extends PromiseLike<infer U> ? U : never
 
@@ -245,8 +245,8 @@ export async function startSpec ({
   return { getResults, close }
 }
 
-async function createViteServer (options: VitestOptions) {
-  const plugin = vitest(options)
+async function createViteServer (options: VijestOptions) {
+  const plugin = vijest(options)
   const internals = plugin[INTERNAL]
 
   const server = await createServer({

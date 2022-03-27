@@ -1,5 +1,5 @@
 {
-  "name": "vitest",
+  "name": "vijest",
   "version": "0.0.0",
   "license": "Parity-7.0.0",
   "main": "index.js",
@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build && NODE_ENV=production yarn build:rollup",
     "dev": "yarn build:rollup --watch | vite build --mode=development --watch",
     "build:rollup": "rollup -c rollup.config.ts --configPlugin rollup-plugin-esbuild ",
-    "test": "VITEST_DEV_TEST=1 yarn jest",
-    "test:debug": "VITEST_DEV_TEST=1 node --inspect node_modules/.bin/jest --runInBand --no-cache",
+    "test": "VIJEST_DEV_TEST=1 yarn jest",
+    "test:debug": "VIJEST_DEV_TEST=1 node --inspect node_modules/.bin/jest --runInBand --no-cache",
     "prepare": "husky install"
   },
   "dependencies": {
