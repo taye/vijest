@@ -34,7 +34,6 @@
     "prepublishOnly": "git clean -fdx dist html ./*.js ./*.map && tsc -b && yarn build"
   },
   "dependencies": {
-    "@jest/transform": "^27.4.6",
     "@testing-library/jest-dom": "*",
     "connect": "^3",
     "find-cache-dir": "^3",
@@ -97,10 +96,11 @@
     "source-map-support"
   ],
   "peerDependencies": {
+    "@jest/transform": "*",
     "expect": "*",
-    "jest-environment-node": ">=15",
-    "jest-mock": ">=15",
-    "supports-color": ">=5",
+    "jest-environment-node": "*",
+    "jest-mock": "*",
+    "supports-color": "*",
     "vite": "2"
   },
   "lint-staged": {
