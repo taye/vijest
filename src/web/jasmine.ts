@@ -26,6 +26,7 @@ export type WebGlobal = typeof globalThis & {
     reject: () => void
     currentSpec: { filename: string; url: string }
     id: string
+    pathSeparator: string
   }
   __specProps: SpecProps
 }
@@ -50,7 +51,7 @@ describe.only = jasmineInterface.fdescribe
 it.skip = jasmineInterface.xtest = jasmineInterface.xit
 it.only = jasmineInterface.ftest = jasmineInterface.fit
 
-const window = global as unknown as WebGlobal
+const window = global as WebGlobal
 
 export const globals = {
   SharedArrayBuffer: window.SharedArrayBuffer || ArrayBuffer,

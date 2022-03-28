@@ -1,16 +1,14 @@
-import { join, dirname } from 'path'
-
 import type { Config } from '@jest/types'
 import chalk from 'chalk'
 import * as fs from 'graceful-fs'
+import type { SnapshotData } from 'jest-snapshot/build/types'
 import naturalCompare from 'natural-compare'
 import type { OptionsReceived as PrettyFormatOptions } from 'pretty-format'
 import { format as prettyFormat } from 'pretty-format'
 
+import { join, dirname } from '../utils'
+
 import { getSerializers } from './plugins'
-//
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SnapshotData = any
 
 export const SNAPSHOT_VERSION = '1'
 export const SNAPSHOT_GUIDE_LINK = 'https://goo.gl/fbAQLP'

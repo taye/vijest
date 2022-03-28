@@ -19,6 +19,7 @@ export default defineConfig({
         spec: resolve(__dirname, 'src/web/spec.ts'),
         'jest-snapshot': resolve(__dirname, 'src/web/jest-snapshot/index.ts'),
         'jest-util': resolve(__dirname, 'src/web/jest-util.ts'),
+        remoteFs: resolve(__dirname, 'src/web/remoteFs.ts'),
       },
       external: [
         'chalk',

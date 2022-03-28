@@ -324,10 +324,10 @@ export async function connect ({
     1000,
   )
 
-  const browser = await puppeteer.connect(browserConnection!)
-  const page = await browser.newPage()
+  assert(browserConnection)
 
-  assert(browser && page)
+  const browser = await puppeteer.connect(browserConnection)
+  const page = await browser.newPage()
 
   return {
     startSpec: async () => startSpec({ connection, filename, ws, reporter, coverageOptions, config, page }),

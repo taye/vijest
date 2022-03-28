@@ -1,4 +1,6 @@
-import { HOST_BASE_PATH } from '../constants'
+import { HOST_BASE_PATH, INTERNAL } from '../constants'
+
+import type { WebGlobal } from './jasmine'
 
 // get pre-mock globals
 const { fetch, XMLHttpRequest } = window
@@ -10,7 +12,7 @@ export async function post (path: string, body?: any) {
   })
 
   if (!r.ok) {
-    throw new Error((await r.json()))
+    throw new Error(await r.json())
   }
 
   return await r.json()
@@ -26,3 +28,8 @@ export function postSync (path: string, body?: any) {
 
   return responseText ? JSON.parse(xhr.responseText) : undefined
 }
+
+const { pathSeparator } = (global as WebGlobal)[INTERNAL]
+
+export const join = (...segments: string[]) => segments.join(pathSeparator)
+export const dirname = (path: string) => path.slice(-path.lastIndexOf(pathSeparator)) || ''

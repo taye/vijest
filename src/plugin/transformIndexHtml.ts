@@ -1,4 +1,5 @@
 import assert from 'assert'
+import { sep as pathSeparator } from 'path'
 
 import queryString from 'query-string'
 import type { IndexHtmlTransform, Plugin } from 'vite'
@@ -38,7 +39,8 @@ const transformIndexHtml = ({ resolveWeb }: Internals): Plugin['transformIndexHt
                   currentSpec: ${await getSpecJson({ server, filename: (query.spec as string) || '' })},
                   id: ${JSON.stringify(query.id)},
                   ready, resolve, reject,
-                }
+                },
+                pathSeparator: ${JSON.stringify(pathSeparator)},
               })
             })()`,
           },

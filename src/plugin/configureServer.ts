@@ -14,7 +14,7 @@ const configureServer =
   async (viteServer) => {
     const { isDev, rootDir, wsClients } = internals
 
-    const template = await fs.readFile(resolve(rootDir, 'src', 'web', 'index.html')).then((b) => b.toString())
+    const template = await fs.readFile(resolve(rootDir, 'html', 'index.html')).then((b) => b.toString())
 
     const app = isDev ? viteServer.middlewares : internals.app
 

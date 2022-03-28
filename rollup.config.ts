@@ -14,10 +14,10 @@ export default defineConfig({
     runner: 'src/jest/runner.ts',
     environment: 'src/jest/environment.ts',
   },
-  external: [/\/node_modules\//, 'fs/promises'],
+  external: [/\/node_modules\//, 'fs/promises', 'timers/promises'],
   output: {
     format: 'commonjs',
-    sourcemap: !isProd,
+    sourcemap: true,
     exports: 'auto',
     dir: __dirname,
     chunkFileNames: '[name].js',

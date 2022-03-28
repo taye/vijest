@@ -1,0 +1,4 @@
+*.ts
+!/index.d.ts
+*.spec.ts
+_*.js

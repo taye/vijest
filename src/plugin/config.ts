@@ -1,11 +1,10 @@
 import assert from 'assert'
-import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { resolve } from 'path'
 
 import type { Plugin } from 'vite'
 
-import { INTERNAL, STUBBED_WEB_DEPS } from '../constants'
+import { INTERNAL } from '../constants'
 
 import type { Internals, VijestPlugin } from '.'
 
@@ -39,7 +38,6 @@ const config =
       resolve: {
         alias: {
           path: 'path-browserify',
-          ...Object.fromEntries([...STUBBED_WEB_DEPS].map((id) => [id, stubs.empty])),
           ...(isDev
             ? {
                 'graceful-fs': stubs.empty,
@@ -47,7 +45,7 @@ const config =
               }
             : {
                 'jest-util': resolveWeb('jest-util.ts'),
-                'graceful-fs': resolve(rootDir, 'src', 'web', 'remoteFs.ts'),
+                'graceful-fs': resolveWeb('remoteFs.ts'),
               }),
           'supports-color': stubs.supportsColor,
           'jest-snapshot': resolveWeb('jest-snapshot/index.ts'),
@@ -61,8 +59,7 @@ const config =
         'process.env': '""',
       },
       optimizeDeps: {
-        exclude: [...STUBBED_WEB_DEPS, 'graceful-fs', 'supports-color'],
-        include: ['jest-util'],
+        include: ['jest-util', 'jest-mock', 'expect', 'chalk'],
       },
     }
   }
@@ -71,26 +68,14 @@ export default config
 
 async function createStubs ({ rootDir }: Pick<Internals, 'rootDir'>) {
   // TODO: distinct file for each instance
-  const empty = resolve(rootDir, '_empty.js')
+  const empty = resolve(rootDir, 'empty-module.js')
   const supportsColor = resolve(rootDir, '_supports-color.stub.js')
 
   const sc = await import('supports-color')
 
-  await Promise.all([
-    exists(empty) || writeFile(empty, 'export default {}'),
-    exists(supportsColor) ||
-      writeFile(supportsColor, `export default ${JSON.stringify(sc.default)};${exportProps(sc.default)}`),
-  ] as Array<Promise<void>>)
+  await writeFile(supportsColor, `export default ${JSON.stringify(sc.default)};${exportProps(sc.default)}`)
 
   return { empty, supportsColor }
-}
-
-function exists (path: string) {
-  try {
-    return existsSync(path)
-  } catch {
-    return false
-  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
